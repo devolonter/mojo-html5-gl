@@ -21,7 +21,7 @@ ______________________________________________________
 Usage
 =
 ______________________________________________________
-Just include [mojo.html5.gl.min.js](https://raw.github.com/devolonter/mojo-html5-gl/master/mojo.html5.gl.min.js) to a page with the game.
+Just connect [mojo.html5.gl.min.js](https://raw.github.com/devolonter/mojo-html5-gl/master/mojo.html5.gl.min.js) to a page with the game.
 
 Demo
 =
