@@ -2,6 +2,10 @@
 
 	document.addEventListener("DOMContentLoaded", init, false);
 
+	var M_PI = 3.1415926535897932384626433832795028841968;
+	var M_TWO_PI = 2.0 * M_PI;
+	var M_HALF_PI = M_PI / 2.0;
+
 	var WebGL2D = this.WebGL2D = function WebGL2D(canvas) {
 		this.canvas = canvas;
 		this.gl = undefined;
@@ -251,7 +255,25 @@
 		};
 
 		gl.arc = function arc(x, y, radius, startAngle, endAngle, anticlockwise) {
-			//TODO
+			//startAngle, endAngle, anticlockwise not implemented
+
+			if (!subPaths.length) {
+				gl.moveTo(x, y + radius);
+				
+				var step = M_HALF_PI * 0.1;
+				var verts = subPaths[0].verts;
+				
+				for (var i = step; i < M_TWO_PI; i+= step) {
+					verts.push(x + Math.sin(i) * radius, y + Math.cos(i) * radius, 0, 0);
+				}
+			} else {
+				var step = M_HALF_PI * 0.1;
+				var verts = subPaths[subPaths.length - 1].verts;
+				
+				for (var i = 0; i < 360; i+= step) {
+					verts.push(x + Math.sin(i) * radius, y + Math.cos(i) * radius, 0, 0);
+				}
+			}
 		};
 
 		function fillSubPath(index) {
@@ -595,11 +617,7 @@
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, rectVertexPositionBuffer);
 		gl.bufferData(gl.ARRAY_BUFFER, rectVerts, gl.STATIC_DRAW);
-	};
-
-	var M_PI = 3.1415926535897932384626433832795028841968;
-	var M_TWO_PI = 2.0 * M_PI;
-	var M_HALF_PI = M_PI / 2.0;
+	};	
 
 	function isPOT(value) {
 		return value > 0 && ((value - 1) & value) === 0;
