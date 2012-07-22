@@ -1,7 +1,7 @@
 Mojo HTML5 GL
 =
 ______________________________________________________
-An experimental patch for mojo, that replace the standard 2d-context with WebGL. The patch is based on the library [WebGL-2D](https://github.com/gameclosure/webgl-2d).
+An experimental patch for mojo, that replaces the standard 2d-context with WebGL. The patch is based on the library [WebGL-2D](https://github.com/gameclosure/webgl-2d).
 
 Features
 =
