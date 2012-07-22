@@ -234,7 +234,7 @@
 			}
 	    };
 
-	    gl.rect = function rect(x, y, w, h) {
+		gl.rect = function rect(x, y, w, h) {
 			gl.moveTo(x, y);
 			gl.lineTo(x + w, y);
 			gl.lineTo(x + w, y + h);
