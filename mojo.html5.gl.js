@@ -71,7 +71,7 @@
 						this.gc.drawImage(surface.image,x,y);
 					}
 
-					gxtkGraphics.prototype.DrawSurface2=function(surface,x,y,srcx,srcy,srcw,srch) {
+					gxtkGraphics.prototype.DrawSurface2 = function(surface,x,y,srcx,srcy,srcw,srch) {
 						if (!surface.image.complete) return;
 
 						if (srcw < 0) { srcx+=srcw;srcw=-srcw; }
@@ -79,6 +79,16 @@
 						if (srcw <= 0 || srch <= 0) return;
 
 						this.gc.drawImage( surface.image,srcx,srcy,srcw,srch,x,y,srcw,srch );
+					}
+
+					gxtkGraphics.prototype.SetScissor = function(x,y,w,h) {
+						if (x!==0 || y!==0 || w!== gl2d.canvas.width || h!== gl2d.canvas.height) {
+							gl.enable(gl.SCISSOR_TEST);
+							y = gl2d.canvas.height - y - h;
+							gl.scissor(x, y, w, h);
+						} else {
+							gl.disable(gl.SCISSOR_TEST);
+						}
 					}
 
 					return gl;
@@ -92,8 +102,6 @@
 
 	WebGL2D.prototype.initCanvas2DAPI = function initCanvas2DAPI(){
 		var gl2d = this, gl = this.gl;
-
-		//var drawState = {}, drawStateStack = [];
 
 		var red = 1.0, green = 1.0, blue = 1.0;
 		var alpha = 1.0, blend = "source-over";
@@ -308,9 +316,7 @@
 			}
 		};
 
-		gl.clip = function clip() {
-			//TODO!
-		};
+		gl.clip = function clip() {};
 
 		var imageCache = [], textureCache = [];
 
