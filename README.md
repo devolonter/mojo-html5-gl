@@ -16,11 +16,9 @@ ______________________________________________________
 Known Issues
 =
 ______________________________________________________
-* Methods DrawCircle, DrawEllipse, DrawOval do not work
-* Method SetScissor doesn't work
 * Doesn't work correctly In Opera 12.00 with WebGL turned on
 
-Installation
+Usage
 =
 ______________________________________________________
 Just include [mojo.html5.gl.min.js](https://raw.github.com/devolonter/mojo-html5-gl/master/mojo.html5.gl.min.js) to a page with the game.
