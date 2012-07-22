@@ -10,7 +10,7 @@ ______________________________________________________
 * High SetBlend performance 
 * High SetColor performance for images 
 * #MOJO_IMAGE_FILTERING_ENABLED support 
-* It works in browsers that do not support WebGL ( 2d-context used)
+* It works in browsers that do not support WebGL (2d-context used)
 * Small file size - 13KB only!
 
 Known Issues
