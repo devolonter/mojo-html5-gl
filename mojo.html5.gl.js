@@ -13,12 +13,13 @@
 		this.vs = undefined;
 		this.shaderProgram = undefined;
 		this.transform = new Transform();
-		this.shaderPool     = [];
+		this.shaderPool = [];
 		this.maxTextureSize = undefined;
+		this.width;
+		this.height;
 
 		canvas.gl2d = this;
 		canvas.$getContext	= canvas.getContext;
-		canvas.oGetContext	= canvas.getContext;
 
 		canvas.getContext = (function(gl2d) {
 			return function(context) {
@@ -59,7 +60,9 @@
 
 					gl2d.initCanvas2DAPI();
 
-					gl.viewport(0, 0, gl2d.canvas.width, gl2d.canvas.height);
+					gl2d.width = gl2d.canvas.width;
+					gl2d.height = gl2d.canvas.height;
+					gl.viewport(0, 0, gl2d.width, gl2d.height);
 
 					gl.clearColor(0, 0, 0, 1);
 					gl.clear(gl.COLOR_BUFFER_BIT);
@@ -92,6 +95,20 @@
 							gl.scissor(x, y, w, h);
 						} else {
 							gl.disable(gl.SCISSOR_TEST);
+						}
+					}
+
+					gxtkGraphics.prototype.BeginRender=function() {
+						if( this.gc ) {
+							if (gl2d.width !== this.Width() || gl2d.height !== this.Height()) {
+								gl2d.shaderPool = [];
+								gl2d.initShaders();
+
+								gl2d.width = this.Width();
+								gl2d.height = this.Height();
+								gl.viewport(0, 0, gl2d.width, gl2d.height);
+							}
+							this.gc.save();
 						}
 					}
 
