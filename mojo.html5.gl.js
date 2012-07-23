@@ -86,9 +86,9 @@
 					}
 
 					gxtkGraphics.prototype.SetScissor = function(x,y,w,h) {
-						if (x!==0 || y!==0 || w!== gl2d.canvas.width || h!== gl2d.canvas.height) {
+						if (x !== 0 || y !== 0 || w !== this.Width() || h !== this.Height()) {
 							gl.enable(gl.SCISSOR_TEST);
-							y = gl2d.canvas.height - y - h;
+							y = this.Height() - y - h;
 							gl.scissor(x, y, w, h);
 						} else {
 							gl.disable(gl.SCISSOR_TEST);
@@ -111,7 +111,7 @@
 		var alpha = 1.0, blend = "source-over";
 
 		Object.defineProperty(gl, "fillStyle", {
-			get: function() { return "rgb(" + (r * 255) + ", " + (g * 255) + ", " + (b * 255) + ")"; },
+			get: function() { return ""; },
 			set: function(value) {
 				var result = value.slice(4, -1).split(',');
 			
@@ -122,7 +122,7 @@
 		});
 
 		Object.defineProperty(gl, "strokeStyle", {
-			get: function() { return "rgb(" + (r * 255) + ", " + (g * 255) + ", " + (b * 255) + ")"; },
+			get: function() { return ""; },
 			set: function(value) { }
 		});
 
@@ -346,7 +346,7 @@
 			this.obj = gl.createTexture();
 			this.index = textureCache.push(this);
 
-			var mojoFilteringEnabled = (typeof(CFG_MOJO_IMAGE_FILTERING_ENABLED) !== "undefined" && CFG_MOJO_IMAGE_FILTERING_ENABLED === "true");
+			var mojoFilteringEnabled = (typeof(CFG_MOJO_IMAGE_FILTERING_ENABLED) === "undefined" || CFG_MOJO_IMAGE_FILTERING_ENABLED === "true");
 
 			imageCache.push(image);
 
