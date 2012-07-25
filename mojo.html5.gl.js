@@ -797,7 +797,7 @@
 			if (activeX) {
 				try {
 					var tryChromeFrame = document.createElement("canvas");
-					gl = tryChromeFrame.getContext("webgl") || tryChromeFrame.getContext("experimental-webgl");				
+					var gl = tryChromeFrame.getContext("webgl") || tryChromeFrame.getContext("experimental-webgl");				
 					chromeFrameEnabled = (typeof(gl) !== 'undefined' && gl !== null);
 				} catch (e) {}
 			}
@@ -814,7 +814,7 @@
 			
 			tryIEWebGL.onreadystatechange = function() {
 				var canvas = document.getElementById(id);
-				IEWebGL = document.createElement("object");
+				var IEWebGL = document.createElement("object");
 				
 				IEWebGL.onreadystatechange = function() {
 					new WebGL2D(IEWebGL);
