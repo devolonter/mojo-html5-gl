@@ -9,19 +9,16 @@ ______________________________________________________
 * It does not require code changes
 * High SetBlend performance 
 * High SetColor performance for images 
-* #MOJO_IMAGE_FILTERING_ENABLED support 
+* #MOJO_IMAGE_FILTERING_ENABLED support
+* Support [IEWebGL](http://iewebgl.com/) and [Chrome Frame](http://www.google.com/chromeframe)
 * It works in browsers that do not support WebGL (2d-context used)
-* Small file size - 13KB only!
-
-Known Issues
-=
-______________________________________________________
-* Doesn't work correctly In Opera 12.00 with WebGL turned on
+* Small file size - 14KB only!
 
 Usage
 =
 ______________________________________________________
-Just connect [mojo.html5.gl.min.js](https://raw.github.com/devolonter/mojo-html5-gl/master/mojo.html5.gl.min.js) to a page with the game.
+* Just connect [mojo.html5.gl.min.js](https://raw.github.com/devolonter/mojo-html5-gl/master/mojo.html5.gl.min.js) to a page with the game.
+* Optional. Enable Chrome Frame support in Internet Explorer. [More info](http://www.chromium.org/developers/how-tos/chrome-frame-getting-started).
 
 Demo
 =
