@@ -14,6 +14,11 @@ ______________________________________________________
 * It works in browsers that do not support WebGL (2d-context used)
 * Small file size - 14KB only!
 
+Known Issues
+=
+______________________________________________________
+* It probably can works slower with a big quantity of transformations and primitives
+
 Usage
 =
 ______________________________________________________
