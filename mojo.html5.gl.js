@@ -26,7 +26,6 @@
 
 		try {
 			this.initShaders();
-			this.initBuffers();
 		} catch (e) { throw e; }
 
 		canvas.getContext = (function(gl2d) {
@@ -175,42 +174,33 @@
 			this.shaderPool[transformStackDepth][sMask] = shaderProgram;
 			return shaderProgram;
 		}
-	};
-
-	var rectVertexPositionBuffer;
-	var rectVertexColorBuffer;
-
-	var pathVertexPositionBuffer;
-  	var pathVertexColorBuffer;
-
-	var rectVerts = new Float32Array([
-		0,0, 0,0,
-		0,1, 0,1,
-		1,1, 1,1,
-		1,0, 1,0
-	]);
-
-	WebGL2D.prototype.initBuffers = function initBuffers() {
-		var gl = this.gl;
-
-		rectVertexPositionBuffer = gl.createBuffer();
-		rectVertexColorBuffer = gl.createBuffer();
-
-		pathVertexPositionBuffer = gl.createBuffer();
-    	pathVertexColorBuffer = gl.createBuffer();
-
-		gl.bindBuffer(gl.ARRAY_BUFFER, rectVertexPositionBuffer);
-		gl.bufferData(gl.ARRAY_BUFFER, rectVerts, gl.STATIC_DRAW);
-	};
+	};	
 
 	var WebGL2DAPI = this.WebGL2DAPI = function WebGL2DAPI(gl2d) {
 		var gl = gl2d.gl;
 
 		var red = 1.0, green = 1.0, blue = 1.0;
-		var alpha = 1.0, blend = "source-over";	
+		var alpha = 1.0, blend = "source-over";
+
+		var rectVertexPositionBuffer;
+		var pathVertexPositionBuffer;
+
+		var rectVerts = new Float32Array([
+			0,0, 0,0,
+			0,1, 0,1,
+			1,1, 1,1,
+			1,0, 1,0
+		]);		
 
 		gl2d.width = gl2d.canvas.width;
 		gl2d.height = gl2d.canvas.height;
+
+		rectVertexPositionBuffer = gl.createBuffer();
+		pathVertexPositionBuffer = gl.createBuffer();
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, rectVertexPositionBuffer);
+		gl.bufferData(gl.ARRAY_BUFFER, rectVerts, gl.STATIC_DRAW);
+
 		gl.viewport(0, 0, gl2d.width, gl2d.height);
 
 		gl.clearColor(0, 0, 0, 1);
