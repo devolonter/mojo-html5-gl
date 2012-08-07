@@ -37,8 +37,7 @@
 
 	var shaderMask = {
 		texture: 1,
-		crop: 2,
-		path: 4
+		crop: 2
 	};
 
 	WebGL2D.prototype.getFragmentShaderSource = function getFragmentShaderSource(sMask) {
@@ -207,10 +206,12 @@
 			rendersPull[i] = {
 				type: -1,
 				count: 0,
-				surface: null,
+				texture: null,
 				sMask: 0,
 				cStack: 0,
+				crop: false,
 				x: 0, y: 0, width: 0, height: 0,
+				srcx: 0, srcy: 0,
 				r: red, g: green, b: blue, a: alpha, argb: ARGB
 			}
 		}		
@@ -248,8 +249,12 @@
 
 			render.last = rendersPull[render.next];
 			render.next += 1;
+
 			render.last.type = type;
 			render.last.count = count;
+			render.last.texture = null;
+			render.last.crop = false;
+			render.last.sMask = 0;
 			render.last.cStack = gl2d.transform.c_stack;
 			render.last.r = red;
 			render.last.g = green;
@@ -267,7 +272,9 @@
 
 			var transform = gl2d.transform;
 			var cStack = -1;
+			var cSMask = 0;
 			var cARGB = 0;
+			var cTexture = null;
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, buffer.pointer);
 			gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);
@@ -278,8 +285,17 @@
 			for (var i = 0; i < render.next; i++) {
 				var r = rendersPull[i];
 
-				if (cStack !== r.cStack) {
-					shaderProgram = gl2d.initShaders(r.cStack + 2, 0);
+				if (r.texture !== null) {
+					transform.pushMatrix();
+
+					transform.translate(r.x, r.y);
+					transform.scale(r.width, r.height);
+
+					cStack = transform.c_stack;
+				}
+
+				if (cStack !== r.cStack || cSMask !== r.sMask) {
+					shaderProgram = gl2d.initShaders(r.cStack + 2, r.sMask);
 
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
 					gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
@@ -287,6 +303,19 @@
 
 					sendTransformStack(shaderProgram);
 					cStack = r.cStack;
+					cSMask = r.sMask;
+				}
+
+				if (r.texture !== null) {
+					if (r.texture !== cTexture) {
+						gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
+						gl.activeTexture(gl.TEXTURE0);
+						gl.uniform1i(shaderProgram.uSampler, 0);
+
+						cTexture = r.texture;
+					}
+				} else if (cTexture !== null) {					
+					cTexture = null;
 				}
 
 				if (cARGB !== r.argb) {
@@ -294,7 +323,17 @@
 					cARGB = r.argb;
 				}
 
+				if (r.crop) {
+					gl.uniform4f(shaderProgram.uCropSource, r.srcx / r.texture.width, 
+								r.srcy / r.texture.height, r.width / r.texture.width, r.height / r.texture.height);
+				}
+
 				gl.drawArrays(r.type, index, r.count);
+
+				if (r.texture !== null) {
+					transform.popMatrix();
+				}
+
 				index += r.count;
 			}
 
@@ -384,7 +423,7 @@
 				buffer.vdata[buffer.vpointer] = x1_t; buffer.vdata[buffer.vpointer + 1] = y1_t;
 				buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0; 
 				buffer.vdata[buffer.vpointer + 4] = x2_t; buffer.vdata[buffer.vpointer + 5] = y2_t; 
-				buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 0;				
+				buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 0;		
 			} else {
 				buffer.vdata[buffer.vpointer] = x1; buffer.vdata[buffer.vpointer + 1] = y1;
 				buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0; 
@@ -413,19 +452,66 @@
 			}
 		}
 
-		gxtkGraphics.prototype.DrawSurface = function(surface,x,y) {
-			if (!surface.image.complete) return;			
-			this.gc.drawImage(surface.image,x,y);
-		}
-
-		gxtkGraphics.prototype.DrawSurface2 = function(surface,x,y,srcx,srcy,srcw,srch) {
+		gxtkGraphics.prototype.DrawSurface = function(surface, x, y) {
 			if (!surface.image.complete) return;
 
-			if (srcw < 0) { srcx+=srcw;srcw=-srcw; }
-			if (srch < 0) { srcy+=srch;srch=-srch; }
-			if (srcw <= 0 || srch <= 0) return;
+			if (!surface.image.texture) {
+				var cacheIndex = imageCache.indexOf(surface.image);
 
-			this.gc.drawImage( surface.image,srcx,srcy,srcw,srch,x,y,srcw,srch );
+				if (cacheIndex !== -1) {
+					surface.image.texture = textureCache[cacheIndex];
+				} else {
+					surface.image.texture = new Texture(surface.image);
+				}
+			}
+
+			renderPush(gl.TRIANGLE_FAN, 4);
+
+			render.last.x = x; render.last.y = y;
+			render.last.width = surface.swidth; render.last.height = surface.sheight;
+			render.last.texture = surface.image.texture;
+			render.last.sMask = shaderMask.texture;
+
+			buffer.vdata[buffer.vpointer] = 0; buffer.vdata[buffer.vpointer + 1] = 0; 
+			buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0;
+			buffer.vdata[buffer.vpointer + 4] = 0; buffer.vdata[buffer.vpointer + 5] = 1; 
+			buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 1;
+			buffer.vdata[buffer.vpointer + 8] = 1; buffer.vdata[buffer.vpointer + 9] = 1; 
+			buffer.vdata[buffer.vpointer + 10] = 1; buffer.vdata[buffer.vpointer + 11] = 1;
+			buffer.vdata[buffer.vpointer + 12] = 1; buffer.vdata[buffer.vpointer + 13] = 0; 
+			buffer.vdata[buffer.vpointer + 14] = 1; buffer.vdata[buffer.vpointer + 15] = 0;
+		}
+
+		gxtkGraphics.prototype.DrawSurface2 = function(surface, x, y, srcx, srcy, srcw, srch) {
+			if (!surface.image.complete) return;
+
+			if (!surface.image.texture) {
+				var cacheIndex = imageCache.indexOf(surface.image);
+
+				if (cacheIndex !== -1) {
+					surface.image.texture = textureCache[cacheIndex];
+				} else {
+					surface.image.texture = new Texture(surface.image);
+				}
+			}
+
+			renderPush(gl.TRIANGLE_FAN, 4);
+
+			render.last.x = x; render.last.y = y;
+			render.last.srcx = srcx; render.last.srcy = srcy;
+			render.last.width = srcw; render.last.height = srch;			
+			render.last.texture = surface.image.texture;
+			render.last.sMask = shaderMask.texture|shaderMask.crop;
+			render.last.crop = true;
+
+			buffer.vdata[buffer.vpointer] = 0; buffer.vdata[buffer.vpointer + 1] = 0; 
+			buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0;
+			buffer.vdata[buffer.vpointer + 4] = 0; buffer.vdata[buffer.vpointer + 5] = 1; 
+			buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 1;
+			buffer.vdata[buffer.vpointer + 8] = 1; buffer.vdata[buffer.vpointer + 9] = 1; 
+			buffer.vdata[buffer.vpointer + 10] = 1; buffer.vdata[buffer.vpointer + 11] = 1;
+			buffer.vdata[buffer.vpointer + 12] = 1; buffer.vdata[buffer.vpointer + 13] = 0; 
+			buffer.vdata[buffer.vpointer + 14] = 1; buffer.vdata[buffer.vpointer + 15] = 0;
 		}		
 
 		this.save = function save() {
@@ -625,10 +711,12 @@
 		function Texture(image) {
 			this.obj = gl.createTexture();
 			this.index = textureCache.push(this);
+			imageCache.push(image);
+
+			this.width = image.meta_width;
+			this.height = image.meta_height;
 
 			var mojoFilteringEnabled = (typeof(CFG_MOJO_IMAGE_FILTERING_ENABLED) === "undefined" || CFG_MOJO_IMAGE_FILTERING_ENABLED === "true");
-
-			imageCache.push(image);
 
 			if (image.width > gl2d.maxTextureSize || image.height > gl2d.maxTextureSize) {
 				var canvas = document.createElement("canvas");
@@ -670,8 +758,6 @@
 					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 				}
 			}
-
-			gl.bindTexture(gl.TEXTURE_2D, null);
 		}
 
 		this.drawImage = function drawImage(image, a, b, c, d, e, f, g, h) {
