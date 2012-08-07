@@ -180,16 +180,19 @@
 
 		gl2d.width = gl2d.canvas.width;
 		gl2d.height = gl2d.canvas.height;
-
-		var red = 1.0, green = 1.0, blue = 1.0; ARGB = 0xFFFFFFFF;
-		var alpha = 1.0, blend = 0;
+		gl2d.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 
 		var MAX_VERTICES = parseInt(65536 / 20);
 		var MAX_RENDERS = parseInt(MAX_VERTICES / 2);
 
+		var red = 1.0, green = 1.0, blue = 1.0;
+		var alpha = 1.0, blend = 0;		
+
 		var MODE_NONE = 0, MODE_TEXTURED = 1, MODE_CROPPED = 2;
 		var mode = MODE_NONE;
 		var gxtk;
+
+		var imageCache = [], textureCache = [];
 
 		var buffer = {
 			vdata: new Float32Array(new Array(MAX_VERTICES * 4)),
@@ -223,153 +226,7 @@
 		gl.enable(gl.BLEND);
 		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-		gl2d.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-
-		function renderPush(type, count) {
-			if (buffer.vcount + count > MAX_VERTICES || render.next === MAX_RENDERS) {
-				renderPull();
-			}
-
-			render.last = rendersPull[render.next];
-			render.next += 1;
-
-			render.last.type = type;
-			render.last.count = count;
-			render.last.texture = null;
-
-			buffer.vpointer = buffer.vcount * 4;
-			buffer.cpointer = buffer.vcount;
-			buffer.vcount += count;
-		}
-
-		function renderPull() {
-			if (buffer.vcount === 0) return;
-
-			var transform = gl2d.transform;
-			var shaderProgram = gl2d.shaderProgram;
-			var cTexture = null;
-			var index = 0;
-			var r;
-
-			gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);		
-
-			switch (mode) {
-				case MODE_NONE:
-					shaderProgram = gl2d.initShaders(transform.c_stack + 1, 0);
-
-					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
-
-					sendTransformStack(shaderProgram);
-
-					for (var i = 0; i < render.next; i++) {
-						r = rendersPull[i];
-
-						gl.drawArrays(r.type, index, r.count);
-
-						index += r.count;
-					}
-					break;
-
-				case MODE_TEXTURED:
-					shaderProgram = gl2d.initShaders(transform.c_stack + 1, shaderMask.texture);
-
-					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
-
-					sendTransformStack(shaderProgram);
-
-					for (var i = 0; i < render.next; i++) {
-						r = rendersPull[i];
-
-						if (cTexture !== r.texture) {
-							gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
-							gl.activeTexture(gl.TEXTURE0);
-							gl.uniform1i(shaderProgram.uSampler, 0);
-
-							cTexture = r.texture;
-						}
-
-						gl.drawArrays(r.type, index, r.count);
-
-						index += r.count;
-					}
-					break;
-
-				case MODE_CROPPED:
-					shaderProgram = gl2d.initShaders(transform.c_stack + 1, shaderMask.texture|shaderMask.crop);
-
-					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
-
-					sendTransformStack(shaderProgram);
-
-					for (var i = 0; i < render.next; i++) {
-						r = rendersPull[i];
-
-						if (cTexture !== r.texture) {
-							gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
-							gl.activeTexture(gl.TEXTURE0);
-							gl.uniform1i(shaderProgram.uSampler, 0);
-
-							cTexture = r.texture;
-						}
-
-						gl.uniform4f(shaderProgram.uCropSource, r.srcx / r.texture.width, 
-								r.srcy / r.texture.height, r.srcw / r.texture.width, r.srch / r.texture.height);
-
-						gl.drawArrays(r.type, index, r.count);
-
-						index += r.count;
-					}
-					break;
-			}
-
-			renderReset();
-		}
-
-		function renderReset() {
-			buffer.vcount = 0;
-			render.next = 0;
-			mode = MODE_NONE;
-		}
-
-		function renderPushRect(x, y, w, h) {
-			renderPush(gl.TRIANGLE_FAN, 4);
-
-			var x0 = x, x1 = x + w, x2 = x + w, x3 = x;
-			var y0 = y, y1 = y, y2 = y+h, y3 = y + h;
-			
-			if (gxtk.tformed) {
-				var tx0 = x0,tx1 = x1,tx2 = x2,tx3 = x3;
-				
-				x0 = tx0 * gxtk.ix + y0 * gxtk.jx + gxtk.tx;
-				y0 = tx0 * gxtk.iy + y0 * gxtk.jy + gxtk.ty;
-				x1 = tx1 * gxtk.ix + y1 * gxtk.jx + gxtk.tx;
-				y1 = tx1 * gxtk.iy + y1 * gxtk.jy + gxtk.ty;
-				x2 = tx2 * gxtk.ix + y2 * gxtk.jx + gxtk.tx;
-				y2 = tx2 * gxtk.iy + y2 * gxtk.jy + gxtk.ty;
-				x3 = tx3 * gxtk.ix + y3 * gxtk.jx + gxtk.tx;
-				y3 = tx3 * gxtk.iy + y3 * gxtk.jy + gxtk.ty;
-			}
-		
-			buffer.vdata[buffer.vpointer] = x0; 
-			buffer.vdata[buffer.vpointer + 1] = y0; 
-			buffer.vdata[buffer.vpointer + 2] = 0; 
-			buffer.vdata[buffer.vpointer + 3] = 0;
-			buffer.vdata[buffer.vpointer + 4] = x1; 
-			buffer.vdata[buffer.vpointer + 5] = y1; 
-			buffer.vdata[buffer.vpointer + 6] = 1; 
-			buffer.vdata[buffer.vpointer + 7] = 0;
-			buffer.vdata[buffer.vpointer + 8] = x2;
-			buffer.vdata[buffer.vpointer + 9] = y2; 
-			buffer.vdata[buffer.vpointer + 10] = 1; 
-			buffer.vdata[buffer.vpointer + 11] = 1;
-			buffer.vdata[buffer.vpointer + 12] = x3; 
-			buffer.vdata[buffer.vpointer + 13] = y3; 
-			buffer.vdata[buffer.vpointer + 14] = 0; 
-			buffer.vdata[buffer.vpointer + 15] = 1;
-		}
+		gl.bindBuffer(gl.ARRAY_BUFFER, buffer.pointer);	
 
 		//mojo runtime patching
 		gxtkGraphics.prototype.BeginRender = function() {
@@ -383,9 +240,7 @@
 					gl.viewport(0, 0, gl2d.width, gl2d.height);
 				}
 
-				this.gc.save();
-
-				gl.bindBuffer(gl.ARRAY_BUFFER, buffer.pointer);
+				this.gc.save();				
 				gxtk = this;	
 			}
 		}
@@ -642,22 +497,167 @@
 			mode = MODE_CROPPED;
 		}
 
+		//helper functions
 		this.save = function save() {
 			gl2d.transform.pushMatrix();
 		};
 
 		this.restore = function restore() {
 			gl2d.transform.popMatrix();
-		};	
+		};
+
+		function renderPush(type, count) {
+			if (buffer.vcount + count > MAX_VERTICES || render.next === MAX_RENDERS) {
+				renderPull();
+			}
+
+			render.last = rendersPull[render.next];
+			render.next += 1;
+
+			render.last.type = type;
+			render.last.count = count;
+			render.last.texture = null;
+
+			buffer.vpointer = buffer.vcount * 4;
+			buffer.cpointer = buffer.vcount;
+			buffer.vcount += count;
+		}
+
+		function renderPull() {
+			if (buffer.vcount === 0) return;
+
+			var transform = gl2d.transform;
+			var shaderProgram = gl2d.shaderProgram;
+			var cTexture = null;
+			var index = 0;
+			var r;
+
+			gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);		
+
+			switch (mode) {
+				case MODE_NONE:
+					shaderProgram = gl2d.initShaders(transform.c_stack + 1, 0);
+
+					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
+					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
+
+					sendTransformStack(shaderProgram);
+
+					for (var i = 0; i < render.next; i++) {
+						r = rendersPull[i];
+
+						gl.drawArrays(r.type, index, r.count);
+
+						index += r.count;
+					}
+					break;
+
+				case MODE_TEXTURED:
+					shaderProgram = gl2d.initShaders(transform.c_stack + 1, shaderMask.texture);
+
+					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
+					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
+
+					sendTransformStack(shaderProgram);
+
+					for (var i = 0; i < render.next; i++) {
+						r = rendersPull[i];
+
+						if (cTexture !== r.texture) {
+							gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
+							gl.activeTexture(gl.TEXTURE0);
+							gl.uniform1i(shaderProgram.uSampler, 0);
+
+							cTexture = r.texture;
+						}
+
+						gl.drawArrays(r.type, index, r.count);
+
+						index += r.count;
+					}
+					break;
+
+				case MODE_CROPPED:
+					shaderProgram = gl2d.initShaders(transform.c_stack + 1, shaderMask.texture|shaderMask.crop);
+
+					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
+					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
+
+					sendTransformStack(shaderProgram);
+
+					for (var i = 0; i < render.next; i++) {
+						r = rendersPull[i];
+
+						if (cTexture !== r.texture) {
+							gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
+							gl.activeTexture(gl.TEXTURE0);
+							gl.uniform1i(shaderProgram.uSampler, 0);
+
+							cTexture = r.texture;
+						}
+
+						gl.uniform4f(shaderProgram.uCropSource, r.srcx / r.texture.width, 
+								r.srcy / r.texture.height, r.srcw / r.texture.width, r.srch / r.texture.height);
+
+						gl.drawArrays(r.type, index, r.count);
+
+						index += r.count;
+					}
+					break;
+			}
+
+			renderReset();
+		}
+
+		function renderReset() {
+			buffer.vcount = 0;
+			render.next = 0;
+			mode = MODE_NONE;
+		}
+
+		function renderPushRect(x, y, w, h) {
+			renderPush(gl.TRIANGLE_FAN, 4);
+
+			var x0 = x, x1 = x + w, x2 = x + w, x3 = x;
+			var y0 = y, y1 = y, y2 = y+h, y3 = y + h;
+			
+			if (gxtk.tformed) {
+				var tx0 = x0,tx1 = x1,tx2 = x2,tx3 = x3;
+				
+				x0 = tx0 * gxtk.ix + y0 * gxtk.jx + gxtk.tx;
+				y0 = tx0 * gxtk.iy + y0 * gxtk.jy + gxtk.ty;
+				x1 = tx1 * gxtk.ix + y1 * gxtk.jx + gxtk.tx;
+				y1 = tx1 * gxtk.iy + y1 * gxtk.jy + gxtk.ty;
+				x2 = tx2 * gxtk.ix + y2 * gxtk.jx + gxtk.tx;
+				y2 = tx2 * gxtk.iy + y2 * gxtk.jy + gxtk.ty;
+				x3 = tx3 * gxtk.ix + y3 * gxtk.jx + gxtk.tx;
+				y3 = tx3 * gxtk.iy + y3 * gxtk.jy + gxtk.ty;
+			}
+		
+			buffer.vdata[buffer.vpointer] = x0; 
+			buffer.vdata[buffer.vpointer + 1] = y0; 
+			buffer.vdata[buffer.vpointer + 2] = 0; 
+			buffer.vdata[buffer.vpointer + 3] = 0;
+			buffer.vdata[buffer.vpointer + 4] = x1; 
+			buffer.vdata[buffer.vpointer + 5] = y1; 
+			buffer.vdata[buffer.vpointer + 6] = 1; 
+			buffer.vdata[buffer.vpointer + 7] = 0;
+			buffer.vdata[buffer.vpointer + 8] = x2;
+			buffer.vdata[buffer.vpointer + 9] = y2; 
+			buffer.vdata[buffer.vpointer + 10] = 1; 
+			buffer.vdata[buffer.vpointer + 11] = 1;
+			buffer.vdata[buffer.vpointer + 12] = x3; 
+			buffer.vdata[buffer.vpointer + 13] = y3; 
+			buffer.vdata[buffer.vpointer + 14] = 0; 
+			buffer.vdata[buffer.vpointer + 15] = 1;
+		}	
 
 		function sendTransformStack(sp) {
 			var stack = gl2d.transform.m_stack;
 			for (var i = 0, maxI = gl2d.transform.c_stack + 1; i < maxI; ++i) {
 				gl.uniformMatrix3fv(sp.uTransforms[i], false, stack[maxI-1-i]);
 			}
-		};
-
-		var imageCache = [], textureCache = [];
+		};		
 
 		function Texture(image) {
 			this.obj = gl.createTexture();
