@@ -250,6 +250,7 @@
 			render.next += 1;
 			render.last.type = type;
 			render.last.count = count;
+			render.last.cStack = gl2d.transform.c_stack;
 			render.last.r = red;
 			render.last.g = green;
 			render.last.b = blue;
@@ -371,6 +372,47 @@
 			gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT );
 		}
 
+		gxtkGraphics.prototype.DrawLine = function(x1,y1,x2,y2) {
+			renderPush(gl.LINES, 2);
+
+			if( this.tformed ){
+				var x1_t = x1 * this.ix + y1 * this.jx + this.tx;
+				var y1_t = x1 * this.iy + y1 * this.jy + this.ty;
+				var x2_t = x2 * this.ix + y2 * this.jx + this.tx;
+				var y2_t = x2 * this.iy + y2 * this.jy + this.ty;
+
+				buffer.vdata[buffer.vpointer] = x1_t; buffer.vdata[buffer.vpointer + 1] = y1_t;
+				buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0; 
+				buffer.vdata[buffer.vpointer + 4] = x2_t; buffer.vdata[buffer.vpointer + 5] = y2_t; 
+				buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 0;				
+			} else {
+				buffer.vdata[buffer.vpointer] = x1; buffer.vdata[buffer.vpointer + 1] = y1;
+				buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0; 
+				buffer.vdata[buffer.vpointer + 4] = x2; buffer.vdata[buffer.vpointer + 5] = y2; 
+				buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 0;
+			}						
+		}
+
+		gxtkGraphics.prototype.DrawPoly = function(verts) {
+			if (verts.length < 6 || verts.length > MAX_VERTICES * 2) return;
+	
+			renderPush(gl.TRIANGLE_FAN, verts.length / 2);
+			
+			if (this.tformed) {
+				for (var i = 0; i < verts.length; i += 2) {
+					buffer.vdata[buffer.vpointer] = verts[i] * this.ix + verts[i + 1] * this.jx + this.tx;
+					buffer.vdata[buffer.vpointer + 1] = verts[i] * this.iy + verts[i + 1] * this.jy + this.ty;
+					buffer.vpointer += 4;
+				}
+			} else {
+				for (var i = 0; i < verts.length; i += 2) {
+					buffer.vdata[buffer.vpointer] = verts[i];
+					buffer.vdata[buffer.vpointer + 1] = verts[i + 1];
+					buffer.vpointer += 4;
+				}
+			}
+		}
+
 		gxtkGraphics.prototype.DrawSurface = function(surface,x,y) {
 			if (!surface.image.complete) return;			
 			this.gc.drawImage(surface.image,x,y);
@@ -384,35 +426,6 @@
 			if (srcw <= 0 || srch <= 0) return;
 
 			this.gc.drawImage( surface.image,srcx,srcy,srcw,srch,x,y,srcw,srch );
-		}		
-
-		gxtkGraphics.prototype.DrawLine = function(x1,y1,x2,y2) {
-			var transform = gl2d.transform;
-			renderPush(gl.LINES, 2);
-
-			if( this.tformed ){
-				var x1_t = x1 * this.ix + y1 * this.jx + this.tx;
-				var y1_t = x1 * this.iy + y1 * this.jy + this.ty;
-				var x2_t = x2 * this.ix + y2 * this.jx + this.tx;
-				var y2_t = x2 * this.iy + y2 * this.jy + this.ty;
-
-				buffer.vdata[buffer.vpointer] = x1_t; buffer.vdata[buffer.vpointer + 1] = y1_t;
-				buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0; 
-				buffer.vdata[buffer.vpointer + 4] = x2_t; buffer.vdata[buffer.vpointer + 5] = y2_t; 
-				buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 0;
-
-				render.cStack = transform.c_stack;
-
-				this.gc.setTransform( this.ix,this.iy,this.jx,this.jy,this.tx,this.ty );
-			} else {
-				buffer.vdata[buffer.vpointer] = x1; buffer.vdata[buffer.vpointer + 1] = y1;
-				buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0; 
-				buffer.vdata[buffer.vpointer + 4] = x2; buffer.vdata[buffer.vpointer + 5] = y2; 
-				buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 0;
-
-				render.cStack = transform.c_stack;
-			}	
-			
 		}		
 
 		this.save = function save() {
