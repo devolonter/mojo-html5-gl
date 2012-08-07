@@ -189,6 +189,7 @@
 
 		var MODE_NONE = 0, MODE_TEXTURED = 1, MODE_CROPPED = 2;
 		var mode = MODE_NONE;
+		var gxtk;
 
 		var buffer = {
 			vdata: new Float32Array(new Array(MAX_VERTICES * 4)),
@@ -210,9 +211,6 @@
 				type: -1,
 				count: 0,
 				texture: null,
-				sMask: 0,
-				cStack: 0,
-				crop: false,
 				srcx: 0, srcy: 0, srcw: 0, srch: 0,
 				r: red, g: green, b: blue, a: alpha, argb: ARGB
 			}
@@ -239,9 +237,6 @@
 			render.last.type = type;
 			render.last.count = count;
 			render.last.texture = null;
-			render.last.crop = false;
-			render.last.sMask = 0;
-			render.last.cStack = gl2d.transform.c_stack;
 			render.last.r = red;
 			render.last.g = green;
 			render.last.b = blue;
@@ -350,36 +345,6 @@
 					break;
 			}
 
-			/*for (var i = 0; i < render.next; i++) {
-				var r = rendersPull[i];
-
-				if (r.texture !== null) {
-					if (r.texture !== cTexture) {
-						gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
-						gl.activeTexture(gl.TEXTURE0);
-						gl.uniform1i(shaderProgram.uSampler, 0);
-
-						cTexture = r.texture;
-					}
-				} else if (cTexture !== null) {					
-					cTexture = null;
-				}
-
-				if (cARGB !== r.argb) {
-					gl.uniform4f(shaderProgram.uColor, r.r, r.g, r.b, r.a);
-					cARGB = r.argb;
-				}
-
-				if (r.crop) {
-					gl.uniform4f(shaderProgram.uCropSource, r.srcx / r.texture.width, 
-								r.srcy / r.texture.height, r.srcw / r.texture.width, r.srch / r.texture.height);
-				}
-
-				gl.drawArrays(r.type, index, r.count);
-
-				index += r.count;
-			}*/
-
 			renderReset();
 		}
 
@@ -395,33 +360,35 @@
 			var x0 = x, x1 = x + w, x2 = x + w, x3 = x;
 			var y0 = y, y1 = y, y2 = y+h, y3 = y + h;
 			
-			if (this.tformed) {
-				x0 = x0 * this.ix + y0 * this.jx + this.tx;
-				y0 = x0 * this.iy + y0 * this.jy + this.ty;
-				x1 = x1 * this.ix + y1 * this.jx + this.tx;
-				y1 = x1 * this.iy + y1 * this.jy + this.ty;
-				x2 = x2 * this.ix + y2 * this.jx + this.tx;
-				y2 = x2 * this.iy + y2 * this.jy + this.ty;
-				x3 = x3 * this.ix + y3 * this.jx + this.tx;
-				y3 = x3 * this.iy + y3 * this.jy + this.ty;
+			if (gxtk.tformed) {
+				var tx0 = x0,tx1 = x1,tx2 = x2,tx3 = x3;
+				
+				x0 = tx0 * gxtk.ix + y0 * gxtk.jx + gxtk.tx;
+				y0 = tx0 * gxtk.iy + y0 * gxtk.jy + gxtk.ty;
+				x1 = tx1 * gxtk.ix + y1 * gxtk.jx + gxtk.tx;
+				y1 = tx1 * gxtk.iy + y1 * gxtk.jy + gxtk.ty;
+				x2 = tx2 * gxtk.ix + y2 * gxtk.jx + gxtk.tx;
+				y2 = tx2 * gxtk.iy + y2 * gxtk.jy + gxtk.ty;
+				x3 = tx3 * gxtk.ix + y3 * gxtk.jx + gxtk.tx;
+				y3 = tx3 * gxtk.iy + y3 * gxtk.jy + gxtk.ty;
 			}
 		
 			buffer.vdata[buffer.vpointer] = x0; 
 			buffer.vdata[buffer.vpointer + 1] = y0; 
 			buffer.vdata[buffer.vpointer + 2] = 0; 
 			buffer.vdata[buffer.vpointer + 3] = 0;
-			buffer.vdata[buffer.vpointer + 4] = x3; 
-			buffer.vdata[buffer.vpointer + 5] = y2; 
-			buffer.vdata[buffer.vpointer + 6] = 0; 
-			buffer.vdata[buffer.vpointer + 7] = 1;
-			buffer.vdata[buffer.vpointer + 8] = x1; 
-			buffer.vdata[buffer.vpointer + 9] = y3; 
+			buffer.vdata[buffer.vpointer + 4] = x1; 
+			buffer.vdata[buffer.vpointer + 5] = y1; 
+			buffer.vdata[buffer.vpointer + 6] = 1; 
+			buffer.vdata[buffer.vpointer + 7] = 0;
+			buffer.vdata[buffer.vpointer + 8] = x2;
+			buffer.vdata[buffer.vpointer + 9] = y2; 
 			buffer.vdata[buffer.vpointer + 10] = 1; 
 			buffer.vdata[buffer.vpointer + 11] = 1;
-			buffer.vdata[buffer.vpointer + 12] = x2; 
-			buffer.vdata[buffer.vpointer + 13] = y1; 
-			buffer.vdata[buffer.vpointer + 14] = 1; 
-			buffer.vdata[buffer.vpointer + 15] = 0;
+			buffer.vdata[buffer.vpointer + 12] = x3; 
+			buffer.vdata[buffer.vpointer + 13] = y3; 
+			buffer.vdata[buffer.vpointer + 14] = 0; 
+			buffer.vdata[buffer.vpointer + 15] = 1;
 		}
 
 		//mojo runtime patching
@@ -435,9 +402,11 @@
 					gl2d.height = this.Height();
 					gl.viewport(0, 0, gl2d.width, gl2d.height);
 				}
+
 				this.gc.save();
 
-				gl.bindBuffer(gl.ARRAY_BUFFER, buffer.pointer);			
+				gl.bindBuffer(gl.ARRAY_BUFFER, buffer.pointer);
+				gxtk = this;	
 			}
 		}
 
@@ -448,7 +417,7 @@
 			}
 		}
 
-		gxtkGraphics.prototype.SetAlpha = function( a ){
+		gxtkGraphics.prototype.SetAlpha = function(a){
 			alpha = a;
 			ARGB = (a << 24) | ((blue * 255) << 16) | ((green * 255) << 8) | red * 255;
 		}
@@ -505,8 +474,9 @@
 			renderPush(gl.POINTS, 1);
 
 			if (this.tformed) {
-				x = x * this.ix + y * this.jx + this.tx;
-				y = y * this.iy + y * this.jy + this.ty;
+				var px = x;
+				x = px * this.ix + y * this.jx + this.tx;
+				y = px * this.iy + y * this.jy + this.ty;
 			}
 			
 			buffer.vdata[buffer.vpointer] = x;
@@ -529,10 +499,11 @@
 			renderPush(gl.LINES, 2);
 
 			if (this.tformed) {
-				x1 = x1 * this.ix + y1 * this.jx + this.tx;
-				y1 = x1 * this.iy + y1 * this.jy + this.ty;
-				x2 = x2 * this.ix + y2 * this.jx + this.tx;
-				y2 = x2 * this.iy + y2 * this.jy + this.ty;
+				var tx0 = x0, tx1 = x1;
+				x1 = tx0 * this.ix + y1 * this.jx + this.tx;
+				y1 = tx0 * this.iy + y1 * this.jy + this.ty;
+				x2 = tx1 * this.ix + y2 * this.jx + this.tx;
+				y2 = tx1 * this.iy + y2 * this.jy + this.ty;
 			}
 
 			buffer.vdata[buffer.vpointer] = x1; 
@@ -583,9 +554,11 @@
 				var x0 = (x + Math.cos(th) * xr);
 				var y0 = (y + Math.sin(th) * yr);
 
-				if (tformed){
-					x0 = x0 * this.ix + y0 * jx + this.tx;
-					y0 = x0 * this.iy + y0 * jy + this.ty;
+				if (this.tformed){
+					var tx0 = x0;
+
+					x0 = tx0 * this.ix + y0 * jx + this.tx;
+					y0 = tx0 * this.iy + y0 * jy + this.ty;
 				}
 
 				buffer.vdata[buffer.vpointer] = x0;
@@ -660,7 +633,7 @@
 			render.last.texture = surface.image.texture;
 
 			mode = MODE_CROPPED;
-		}		
+		}
 
 		this.save = function save() {
 			gl2d.transform.pushMatrix();
@@ -668,43 +641,13 @@
 
 		this.restore = function restore() {
 			gl2d.transform.popMatrix();
-		};
-
-		this.translate = function translate(x, y) {
-			gl2d.transform.translate(x, y);
-		};
-
-		var rotate = function rotate(a) {
-			gl2d.transform.rotate(a);
-		};
-
-		this.scale = function scale(x, y) {
-			gl2d.transform.scale(x, y);
-		};
-
-		this.transform = function transform(m11, m12, m21, m22, dx, dy) {
-			var m = gl2d.transform.m_stack[gl2d.transform.c_stack];
-
-			m[0] = m11;
-			m[1] = m12;
-			m[3] = m21;
-			m[4] = m22;
-			m[6] = dx;
-			m[7] = dy;
-		};
+		};	
 
 		function sendTransformStack(sp) {
 			var stack = gl2d.transform.m_stack;
 			for (var i = 0, maxI = gl2d.transform.c_stack + 1; i < maxI; ++i) {
 				gl.uniformMatrix3fv(sp.uTransforms[i], false, stack[maxI-1-i]);
 			}
-		};
-
-		this.setTransform = function setTransform(m11, m12, m21, m22, dx, dy) {
-			renderPull();
-
-			gl2d.transform.setIdentity();
-			this.transform.apply(this, arguments);
 		};
 
 		var imageCache = [], textureCache = [];
