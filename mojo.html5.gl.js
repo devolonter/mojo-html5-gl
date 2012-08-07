@@ -445,11 +445,20 @@
 		}
 
 		gxtkGraphics.prototype.SetAlpha = function(a){
+			if (alpha === a) return;
+
+			renderPull();
+
 			alpha = a;
 			ARGB = (a << 24) | ((blue * 255) << 16) | ((green * 255) << 8) | red * 255;
 		}
 
 		gxtkGraphics.prototype.SetColor = function(r, g, b){
+			var argb = (alpha << 24) | (b << 16) | (g << 8) | r;
+			if (ARGB === argb) return;
+
+			renderPull();
+
 			red = r / 255.0;
 			green = g / 255.0;
 			blue = b / 255.0;
@@ -458,6 +467,7 @@
 
 		gxtkGraphics.prototype.SetBlend = function(b){
 			if (blend === b) return;
+
 			renderPull();
 
 			blend = b;
