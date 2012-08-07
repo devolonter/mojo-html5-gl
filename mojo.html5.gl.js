@@ -187,6 +187,9 @@
 		var MAX_VERTICES = parseInt(65536 / 20);
 		var MAX_RENDERS = parseInt(MAX_VERTICES / 2);
 
+		var MODE_NONE = 0, MODE_TEXTURED = 1, MODE_CROPPED = 2;
+		var mode = MODE_NONE;
+
 		var buffer = {
 			vdata: new Float32Array(new Array(MAX_VERTICES * 4)),
 			vcount: 0,
@@ -254,31 +257,101 @@
 			if (buffer.vcount === 0) return;
 
 			var transform = gl2d.transform;
-			var cStack = -1;
-			var dStack = 0;
-			var cSMask = 0;
-			var cARGB = 0;
+			var shaderProgram = gl2d.shaderProgram;
+			var cARGB = ARGB;
 			var cTexture = null;
+			var index = 0;
+			var r;
 
 			gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);		
 
-			var shaderProgram;
-			var index = 0;
-
-			for (var i = 0; i < render.next; i++) {
-				var r = rendersPull[i];
-
-				if (cStack !== r.cStack || cSMask !== r.sMask) {
-					shaderProgram = gl2d.initShaders(r.cStack + 1, r.sMask);
+			switch (mode) {
+				case MODE_NONE:
+					shaderProgram = gl2d.initShaders(transform.c_stack + 1, 0);
 
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
 					gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
-					cARGB = ARGB;
 
 					sendTransformStack(shaderProgram);
-					cStack = r.cStack;
-					cSMask = r.sMask;
-				}
+
+					for (var i = 0; i < render.next; i++) {
+						r = rendersPull[i];
+
+						if (cARGB !== r.argb) {
+							gl.uniform4f(shaderProgram.uColor, r.r, r.g, r.b, r.a);
+							cARGB = r.argb;
+						}
+
+						gl.drawArrays(r.type, index, r.count);
+
+						index += r.count;
+					}
+					break;
+				case MODE_TEXTURED:
+					shaderProgram = gl2d.initShaders(transform.c_stack + 1, shaderMask.texture);
+
+					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
+					gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
+
+					sendTransformStack(shaderProgram);
+
+					for (var i = 0; i < render.next; i++) {
+						r = rendersPull[i];
+
+						if (cARGB !== r.argb) {
+							gl.uniform4f(shaderProgram.uColor, r.r, r.g, r.b, r.a);
+							cARGB = r.argb;
+						}
+
+						if (cTexture !== r.texture) {
+							gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
+							gl.activeTexture(gl.TEXTURE0);
+							gl.uniform1i(shaderProgram.uSampler, 0);
+
+							cTexture = r.texture;
+						}
+
+						gl.drawArrays(r.type, index, r.count);
+
+						index += r.count;
+					}
+					break;
+				case MODE_CROPPED:
+					shaderProgram = gl2d.initShaders(transform.c_stack + 1, shaderMask.texture|shaderMask.crop);
+
+					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
+					gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
+
+					sendTransformStack(shaderProgram);
+
+					for (var i = 0; i < render.next; i++) {
+						r = rendersPull[i];
+
+						if (cARGB !== r.argb) {
+							gl.uniform4f(shaderProgram.uColor, r.r, r.g, r.b, r.a);
+							cARGB = r.argb;
+						}
+
+						if (cTexture !== r.texture) {
+							gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
+							gl.activeTexture(gl.TEXTURE0);
+							gl.uniform1i(shaderProgram.uSampler, 0);
+
+							cTexture = r.texture;
+						}
+
+						gl.uniform4f(shaderProgram.uCropSource, r.srcx / r.texture.width, 
+								r.srcy / r.texture.height, r.srcw / r.texture.width, r.srch / r.texture.height);
+
+						gl.drawArrays(r.type, index, r.count);
+
+						index += r.count;
+					}
+					break;
+			}
+
+			/*for (var i = 0; i < render.next; i++) {
+				var r = rendersPull[i];
 
 				if (r.texture !== null) {
 					if (r.texture !== cTexture) {
@@ -305,7 +378,7 @@
 				gl.drawArrays(r.type, index, r.count);
 
 				index += r.count;
-			}
+			}*/
 
 			renderReset();
 		}
@@ -313,6 +386,42 @@
 		function renderReset() {
 			buffer.vcount = 0;
 			render.next = 0;
+			mode = MODE_NONE;
+		}
+
+		function renderPushRect(x, y, w, h) {
+			renderPush(gl.TRIANGLE_FAN, 4);
+
+			var x0 = x, x1 = x + w, x2 = x + w, x3 = x;
+			var y0 = y, y1 = y, y2 = y+h, y3 = y + h;
+			
+			if (this.tformed) {
+				x0 = x0 * this.ix + y0 * this.jx + this.tx;
+				y0 = x0 * this.iy + y0 * this.jy + this.ty;
+				x1 = x1 * this.ix + y1 * this.jx + this.tx;
+				y1 = x1 * this.iy + y1 * this.jy + this.ty;
+				x2 = x2 * this.ix + y2 * this.jx + this.tx;
+				y2 = x2 * this.iy + y2 * this.jy + this.ty;
+				x3 = x3 * this.ix + y3 * this.jx + this.tx;
+				y3 = x3 * this.iy + y3 * this.jy + this.ty;
+			}
+		
+			buffer.vdata[buffer.vpointer] = x0; 
+			buffer.vdata[buffer.vpointer + 1] = y0; 
+			buffer.vdata[buffer.vpointer + 2] = 0; 
+			buffer.vdata[buffer.vpointer + 3] = 0;
+			buffer.vdata[buffer.vpointer + 4] = x3; 
+			buffer.vdata[buffer.vpointer + 5] = y2; 
+			buffer.vdata[buffer.vpointer + 6] = 0; 
+			buffer.vdata[buffer.vpointer + 7] = 1;
+			buffer.vdata[buffer.vpointer + 8] = x1; 
+			buffer.vdata[buffer.vpointer + 9] = y3; 
+			buffer.vdata[buffer.vpointer + 10] = 1; 
+			buffer.vdata[buffer.vpointer + 11] = 1;
+			buffer.vdata[buffer.vpointer + 12] = x2; 
+			buffer.vdata[buffer.vpointer + 13] = y1; 
+			buffer.vdata[buffer.vpointer + 14] = 1; 
+			buffer.vdata[buffer.vpointer + 15] = 0;
 		}
 
 		//mojo runtime patching
@@ -378,93 +487,142 @@
 			}
 		}
 
+		gxtkGraphics.prototype.SetMatrix = function(ix, iy, jx, jy, tx, ty) {
+			this.ix = ix; this.iy = iy;
+			this.jx = jx; this.jy = jy;
+			this.tx = tx; this.ty = ty;
+			this.tformed = (ix !== 1 || iy !== 0 || jx !== 0 || jy !== 1 || tx !== 0 || ty !== 0);
+		}
+
 		gxtkGraphics.prototype.Cls = function(r, g, b) {
 			gl.clearColor(r / 255.0, g / 255.0, b / 255.0, 1);
 			gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT );
 		}
 
 		gxtkGraphics.prototype.DrawPoint = function(x, y){
+			if (mode !== MODE_NONE) renderPull();
+
 			renderPush(gl.POINTS, 1);
+
+			if (this.tformed) {
+				x = x * this.ix + y * this.jx + this.tx;
+				y = y * this.iy + y * this.jy + this.ty;
+			}
 			
 			buffer.vdata[buffer.vpointer] = x;
 			buffer.vdata[buffer.vpointer + 1] = y;
+
+			mode = MODE_NONE;
+		}		
+
+		gxtkGraphics.prototype.DrawRect = function(x, y, w, h){
+			if (mode !== MODE_NONE) renderPull();
+
+			renderPushRect(x, y, w, h);
+
+			mode = MODE_NONE;
 		}
 
 		gxtkGraphics.prototype.DrawLine = function(x1, y1, x2, y2) {
+			if (mode !== MODE_NONE) renderPull();
+
 			renderPush(gl.LINES, 2);
 
-			buffer.vdata[buffer.vpointer] = x1; buffer.vdata[buffer.vpointer + 1] = y1;
-			buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0; 
-			buffer.vdata[buffer.vpointer + 4] = x2; buffer.vdata[buffer.vpointer + 5] = y2; 
-			buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 0;
-		}
+			if (this.tformed) {
+				x1 = x1 * this.ix + y1 * this.jx + this.tx;
+				y1 = x1 * this.iy + y1 * this.jy + this.ty;
+				x2 = x2 * this.ix + y2 * this.jx + this.tx;
+				y2 = x2 * this.iy + y2 * this.jy + this.ty;
+			}
 
-		gxtkGraphics.prototype.DrawRect = function(x, y, w, h){
-			renderPush(gl.TRIANGLE_FAN, 4);
-		
-			buffer.vdata[buffer.vpointer] = x; 
-			buffer.vdata[buffer.vpointer + 1] = y; 
+			buffer.vdata[buffer.vpointer] = x1; 
+			buffer.vdata[buffer.vpointer + 1] = y1;
 			buffer.vdata[buffer.vpointer + 2] = 0; 
-			buffer.vdata[buffer.vpointer + 3] = 0;
-			buffer.vdata[buffer.vpointer + 4] = x; 
-			buffer.vdata[buffer.vpointer + 5] = y + h; 
+			buffer.vdata[buffer.vpointer + 3] = 0; 
+			buffer.vdata[buffer.vpointer + 4] = x2; 
+			buffer.vdata[buffer.vpointer + 5] = y2; 
 			buffer.vdata[buffer.vpointer + 6] = 0; 
-			buffer.vdata[buffer.vpointer + 7] = 1;
-			buffer.vdata[buffer.vpointer + 8] = x + w; 
-			buffer.vdata[buffer.vpointer + 9] = y + h; 
-			buffer.vdata[buffer.vpointer + 10] = 1; 
-			buffer.vdata[buffer.vpointer + 11] = 1;
-			buffer.vdata[buffer.vpointer + 12] = x + w; 
-			buffer.vdata[buffer.vpointer + 13] = y; 
-			buffer.vdata[buffer.vpointer + 14] = 1; 
-			buffer.vdata[buffer.vpointer + 15] = 0;
+			buffer.vdata[buffer.vpointer + 7] = 0;
+
+			mode = MODE_NONE;
 		}
 
 		gxtkGraphics.prototype.DrawOval = function(x, y, w, h) {
+			if (mode !== MODE_NONE) renderPull();
+
 			var xr = w / 2.0;
 			var yr = h / 2.0;
 
-			var segs;	
-			segs = parseInt(Math.abs(xr) + Math.abs(yr));
+			var segs;
 
-			if( segs > MAX_VERTICES){
+			if (this.tformed) {
+				var xx = xr * this.ix, xy = xr * this.iy, xd = parseFloat(Math.sqrt(xx * xx + xy * xy));
+				var yx = yr * this.jx, yy = yr * this.jy, yd = parseFloat(Math.sqrt(yx * yx + yy * yy));
+
+				segs= parseInt(xd + yd);
+			}else{
+				segs = parseInt(Math.abs(xr) + Math.abs(yr));
+			}
+			
+
+			if (segs > MAX_VERTICES) {
 				segs = MAX_VERTICES;
-			} else if (segs<12 ){
+			} else if (segs<12 ) {
 				segs=12;
 			} else {
 				segs &=~ 3;
 			}
 		
-			x+=xr;
-			y+=yr;
+			x += xr;
+			y += yr;
 
-			renderPush(gl.TRIANGLE_FAN,segs);
+			renderPush(gl.TRIANGLE_FAN, segs);
 
 			for (var i=0; i < segs; i++) {
 				var th = i * 6.28318531 / segs;
 				var x0 = (x + Math.cos(th) * xr);
 				var y0 = (y + Math.sin(th) * yr);
 
+				if (tformed){
+					x0 = x0 * this.ix + y0 * jx + this.tx;
+					y0 = x0 * this.iy + y0 * jy + this.ty;
+				}
+
 				buffer.vdata[buffer.vpointer] = x0;
 				buffer.vdata[buffer.vpointer + 1] = y0;
 				buffer.vpointer += 4;
 			}
+
+			mode = MODE_NONE;
 		}	
 
 		gxtkGraphics.prototype.DrawPoly = function(verts) {
+			if (mode !== MODE_NONE) renderPull();
+
 			if (verts.length < 6 || verts.length > MAX_VERTICES * 2) return;
 	
 			renderPush(gl.TRIANGLE_FAN, verts.length / 2);
-			
-			for (var i = 0; i < verts.length; i += 2) {
-				buffer.vdata[buffer.vpointer] = verts[i];
-				buffer.vdata[buffer.vpointer + 1] = verts[i + 1];
-				buffer.vpointer += 4;
+
+			if (this.tformed) {
+				for (var i = 0; i < verts.length; i += 2) {
+					buffer.vdata[buffer.vpointer] = verts[i] * this.ix + verts[i + 1] * this.jx + this.tx;
+					buffer.vdata[buffer.vpointer + 1] = verts[i] * this.iy + verts[i + 1] * this.jy + this.ty;
+					buffer.vpointer += 4;
+				}
+			} else {			
+				for (var i = 0; i < verts.length; i += 2) {
+					buffer.vdata[buffer.vpointer] = verts[i];
+					buffer.vdata[buffer.vpointer + 1] = verts[i + 1];
+					buffer.vpointer += 4;
+				}
 			}
+
+			mode = MODE_NONE;
 		}
 
 		gxtkGraphics.prototype.DrawSurface = function(surface, x, y) {
 			if (!surface.image.complete) return;
+			if (mode !== MODE_TEXTURED) renderPull();
 
 			if (!surface.image.texture) {
 				var cacheIndex = imageCache.indexOf(surface.image);
@@ -476,33 +634,15 @@
 				}
 			}
 
-			renderPull();
-
-			renderPush(gl.TRIANGLE_FAN, 4);
-
+			renderPushRect(x, y, surface.swidth, surface.sheight);
 			render.last.texture = surface.image.texture;
-			render.last.sMask = shaderMask.texture;
 
-			buffer.vdata[buffer.vpointer] = x; 
-			buffer.vdata[buffer.vpointer + 1] = y; 
-			buffer.vdata[buffer.vpointer + 2] = 0; 
-			buffer.vdata[buffer.vpointer + 3] = 0;
-			buffer.vdata[buffer.vpointer + 4] = x; 
-			buffer.vdata[buffer.vpointer + 5] = y + surface.sheight; 
-			buffer.vdata[buffer.vpointer + 6] = 0; 
-			buffer.vdata[buffer.vpointer + 7] = 1;
-			buffer.vdata[buffer.vpointer + 8] = x + surface.swidth; 
-			buffer.vdata[buffer.vpointer + 9] = y + surface.sheight; 
-			buffer.vdata[buffer.vpointer + 10] = 1; 
-			buffer.vdata[buffer.vpointer + 11] = 1;
-			buffer.vdata[buffer.vpointer + 12] = x + surface.swidth; 
-			buffer.vdata[buffer.vpointer + 13] = y; 
-			buffer.vdata[buffer.vpointer + 14] = 1; 
-			buffer.vdata[buffer.vpointer + 15] = 0;
+			mode = MODE_TEXTURED;
 		}
 
 		gxtkGraphics.prototype.DrawSurface2 = function(surface, x, y, srcx, srcy, srcw, srch) {
 			if (!surface.image.complete) return;
+			if (mode !== MODE_CROPPED) renderPull();
 
 			if (!surface.image.texture) {
 				var cacheIndex = imageCache.indexOf(surface.image);
@@ -514,36 +654,12 @@
 				}
 			}
 
-			renderPull();
-
-			if (srcw < 0){ srcx += srcw; srcw =- srcw; }
-			if (srch < 0){ srcy += srch; srch =- srch; }
-			if (srcw <= 0 || srch <= 0) return;
-
-			renderPush(gl.TRIANGLE_FAN, 4);
-
+			renderPushRect(x, y, srcw, srch);
 			render.last.srcx = srcx; render.last.srcy = srcy;
-			render.last.srcw = srcw; render.last.srch = srch;			
+			render.last.srcw = srcw; render.last.srch = srch;
 			render.last.texture = surface.image.texture;
-			render.last.sMask = shaderMask.texture|shaderMask.crop;
-			render.last.crop = true;
 
-			buffer.vdata[buffer.vpointer] = x; 
-			buffer.vdata[buffer.vpointer + 1] = y; 
-			buffer.vdata[buffer.vpointer + 2] = 0; 
-			buffer.vdata[buffer.vpointer + 3] = 0;
-			buffer.vdata[buffer.vpointer + 4] = x; 
-			buffer.vdata[buffer.vpointer + 5] = y + srch; 
-			buffer.vdata[buffer.vpointer + 6] = 0; 
-			buffer.vdata[buffer.vpointer + 7] = 1;
-			buffer.vdata[buffer.vpointer + 8] = x + srcw; 
-			buffer.vdata[buffer.vpointer + 9] = y + srch; 
-			buffer.vdata[buffer.vpointer + 10] = 1; 
-			buffer.vdata[buffer.vpointer + 11] = 1;
-			buffer.vdata[buffer.vpointer + 12] = x + srcw; 
-			buffer.vdata[buffer.vpointer + 13] = y; 
-			buffer.vdata[buffer.vpointer + 14] = 1; 
-			buffer.vdata[buffer.vpointer + 15] = 0;
+			mode = MODE_CROPPED;
 		}		
 
 		this.save = function save() {
