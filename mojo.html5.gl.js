@@ -211,8 +211,7 @@
 				type: -1,
 				count: 0,
 				texture: null,
-				srcx: 0, srcy: 0, srcw: 0, srch: 0,
-				r: red, g: green, b: blue, a: alpha, argb: ARGB
+				srcx: 0, srcy: 0, srcw: 0, srch: 0
 			}
 		}
 
@@ -237,11 +236,6 @@
 			render.last.type = type;
 			render.last.count = count;
 			render.last.texture = null;
-			render.last.r = red;
-			render.last.g = green;
-			render.last.b = blue;
-			render.last.a = alpha;
-			render.last.argb = ARGB;
 
 			buffer.vpointer = buffer.vcount * 4;
 			buffer.cpointer = buffer.vcount;
@@ -253,7 +247,6 @@
 
 			var transform = gl2d.transform;
 			var shaderProgram = gl2d.shaderProgram;
-			var cARGB = ARGB;
 			var cTexture = null;
 			var index = 0;
 			var r;
@@ -265,38 +258,29 @@
 					shaderProgram = gl2d.initShaders(transform.c_stack + 1, 0);
 
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-					gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
+					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
 
 					sendTransformStack(shaderProgram);
 
 					for (var i = 0; i < render.next; i++) {
 						r = rendersPull[i];
-
-						if (cARGB !== r.argb) {
-							gl.uniform4f(shaderProgram.uColor, r.r, r.g, r.b, r.a);
-							cARGB = r.argb;
-						}
 
 						gl.drawArrays(r.type, index, r.count);
 
 						index += r.count;
 					}
 					break;
+
 				case MODE_TEXTURED:
 					shaderProgram = gl2d.initShaders(transform.c_stack + 1, shaderMask.texture);
 
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-					gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
+					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
 
 					sendTransformStack(shaderProgram);
 
 					for (var i = 0; i < render.next; i++) {
 						r = rendersPull[i];
-
-						if (cARGB !== r.argb) {
-							gl.uniform4f(shaderProgram.uColor, r.r, r.g, r.b, r.a);
-							cARGB = r.argb;
-						}
 
 						if (cTexture !== r.texture) {
 							gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
@@ -311,21 +295,17 @@
 						index += r.count;
 					}
 					break;
+
 				case MODE_CROPPED:
 					shaderProgram = gl2d.initShaders(transform.c_stack + 1, shaderMask.texture|shaderMask.crop);
 
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-					gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
+					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
 
 					sendTransformStack(shaderProgram);
 
 					for (var i = 0; i < render.next; i++) {
 						r = rendersPull[i];
-
-						if (cARGB !== r.argb) {
-							gl.uniform4f(shaderProgram.uColor, r.r, r.g, r.b, r.a);
-							cARGB = r.argb;
-						}
 
 						if (cTexture !== r.texture) {
 							gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
@@ -446,39 +426,29 @@
 
 		gxtkGraphics.prototype.SetAlpha = function(a){
 			if (alpha === a) return;
-
 			renderPull();
-
 			alpha = a;
-			ARGB = (a << 24) | ((blue * 255) << 16) | ((green * 255) << 8) | red * 255;
 		}
 
 		gxtkGraphics.prototype.SetColor = function(r, g, b){
-			var argb = (alpha << 24) | (b << 16) | (g << 8) | r;
-			if (ARGB === argb) return;
-
+			if (red === r && green === g && blue === b) return;
 			renderPull();
-
-			red = r / 255.0;
-			green = g / 255.0;
-			blue = b / 255.0;
-			ARGB = (alpha << 24) | (b << 16) | (g << 8) | r;
+			red = r; green = g; blue = b;
 		}
 
 		gxtkGraphics.prototype.SetBlend = function(b){
 			if (blend === b) return;
+			renderPull();			
 
-			renderPull();
-
-			blend = b;
-
-			switch (blend) {
+			switch (b) {
 				case 1:
 					gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 					break;
 				default:
 					gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 			}
+
+			blend = b;
 		}
 
 		gxtkGraphics.prototype.SetScissor = function(x,y,w,h) {
@@ -501,7 +471,7 @@
 		}
 
 		gxtkGraphics.prototype.Cls = function(r, g, b) {
-			gl.clearColor(r / 255.0, g / 255.0, b / 255.0, 1);
+			gl.clearColor(r / 255, g / 255, b / 255, 1);
 			gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT );
 		}
 
