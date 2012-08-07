@@ -417,6 +417,33 @@
 			}
 		}
 
+		gxtkGraphics.prototype.LoadSurface = function( path ){
+			var app = this.app;
+			
+			function onloadfun(){
+				app.DecLoading();
+
+				if (!this.texture) {
+					var cacheIndex = imageCache.indexOf(image);
+
+					if (cacheIndex !== -1) {
+						this.texture = textureCache[cacheIndex];
+					} else {
+						this.texture = new Texture(image);
+					}
+				}				
+			}
+
+			app.IncLoading();
+
+			var image = loadImage( path, onloadfun);
+			if (image) return new gxtkSurface( image,this );
+
+			app.DecLoading();
+
+			return null;
+		}
+
 		gxtkGraphics.prototype.SetAlpha = function(a){
 			alpha = a;
 			ARGB = (a << 24) | ((blue * 255) << 16) | ((green * 255) << 8) | red * 255;
@@ -538,7 +565,7 @@
 
 			if (segs > MAX_VERTICES) {
 				segs = MAX_VERTICES;
-			} else if (segs<12 ) {
+			} else if (segs < 12) {
 				segs=12;
 			} else {
 				segs &=~ 3;
@@ -595,17 +622,7 @@
 
 		gxtkGraphics.prototype.DrawSurface = function(surface, x, y) {
 			if (!surface.image.complete) return;
-			if (mode !== MODE_TEXTURED) renderPull();
-
-			if (!surface.image.texture) {
-				var cacheIndex = imageCache.indexOf(surface.image);
-
-				if (cacheIndex !== -1) {
-					surface.image.texture = textureCache[cacheIndex];
-				} else {
-					surface.image.texture = new Texture(surface.image);
-				}
-			}
+			if (mode !== MODE_TEXTURED) renderPull();			
 
 			renderPushRect(x, y, surface.swidth, surface.sheight);
 			render.last.texture = surface.image.texture;
@@ -616,16 +633,6 @@
 		gxtkGraphics.prototype.DrawSurface2 = function(surface, x, y, srcx, srcy, srcw, srch) {
 			if (!surface.image.complete) return;
 			if (mode !== MODE_CROPPED) renderPull();
-
-			if (!surface.image.texture) {
-				var cacheIndex = imageCache.indexOf(surface.image);
-
-				if (cacheIndex !== -1) {
-					surface.image.texture = textureCache[cacheIndex];
-				} else {
-					surface.image.texture = new Texture(surface.image);
-				}
-			}
 
 			renderPushRect(x, y, srcw, srch);
 			render.last.srcx = srcx; render.last.srcy = srcy;
