@@ -622,7 +622,17 @@
 
 		gxtkGraphics.prototype.DrawSurface = function(surface, x, y) {
 			if (!surface.image.complete) return;
-			if (mode !== MODE_TEXTURED) renderPull();			
+			if (mode !== MODE_TEXTURED) renderPull();
+
+			if (!surface.image.texture) {
+				var cacheIndex = imageCache.indexOf(surface.image);
+
+				if (cacheIndex !== -1) {
+					surface.image.texture = textureCache[cacheIndex];
+				} else {
+					surface.image.texture = new Texture(surface.image);
+				}
+			}
 
 			renderPushRect(x, y, surface.swidth, surface.sheight);
 			render.last.texture = surface.image.texture;
@@ -633,6 +643,16 @@
 		gxtkGraphics.prototype.DrawSurface2 = function(surface, x, y, srcx, srcy, srcw, srch) {
 			if (!surface.image.complete) return;
 			if (mode !== MODE_CROPPED) renderPull();
+
+			if (!surface.image.texture) {
+				var cacheIndex = imageCache.indexOf(surface.image);
+
+				if (cacheIndex !== -1) {
+					surface.image.texture = textureCache[cacheIndex];
+				} else {
+					surface.image.texture = new Texture(surface.image);
+				}
+			}
 
 			renderPushRect(x, y, srcw, srch);
 			render.last.srcx = srcx; render.last.srcy = srcy;
