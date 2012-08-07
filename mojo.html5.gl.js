@@ -179,8 +179,41 @@
 	var WebGL2DAPI = this.WebGL2DAPI = function WebGL2DAPI(gl2d) {
 		var gl = gl2d.gl;
 
-		var red = 1.0, green = 1.0, blue = 1.0;
-		var alpha = 1.0, blend = "source-over";
+		gl2d.width = gl2d.canvas.width;
+		gl2d.height = gl2d.canvas.height;
+
+		var red = 1.0, green = 1.0, blue = 1.0; ARGB = 0xFFFFFFFF;
+		var alpha = 1.0, blend = 0;
+
+		var MAX_VERTICES = parseInt(65536 / 20);
+		var MAX_RENDERS = parseInt(MAX_VERTICES / 2);
+
+		var buffer = {
+			vdata: new Float32Array(new Array(MAX_VERTICES * 4)),
+			vcount: 0,
+			vpointer: 0,
+			cpointer: 0,
+			pointer: gl.createBuffer()
+		};
+
+		var render = {
+			last: {type: -1, count: 0},
+			next: 0
+		}
+
+		var rendersPull = new Array(MAX_RENDERS);
+
+		for (var i = 0; i < rendersPull.length; i++) {
+			rendersPull[i] = {
+				type: -1,
+				count: 0,
+				surface: null,
+				sMask: 0,
+				cStack: 0,
+				x: 0, y: 0, width: 0, height: 0,
+				r: red, g: green, b: blue, a: alpha, argb: ARGB
+			}
+		}		
 
 		var rectVertexPositionBuffer;
 		var pathVertexPositionBuffer;
@@ -191,9 +224,6 @@
 			1,1, 1,1,
 			1,0, 1,0
 		]);		
-
-		gl2d.width = gl2d.canvas.width;
-		gl2d.height = gl2d.canvas.height;
 
 		rectVertexPositionBuffer = gl.createBuffer();
 		pathVertexPositionBuffer = gl.createBuffer();
@@ -211,7 +241,137 @@
 
 		gl2d.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 
-		//mojo hack
+		function renderPush(type, count) {
+			if (buffer.vcount + count > MAX_VERTICES || render.next === MAX_RENDERS) {
+				renderPull();
+			}
+
+			render.last = rendersPull[render.next];
+			render.next += 1;
+			render.last.type = type;
+			render.last.count = count;
+			render.last.r = red;
+			render.last.g = green;
+			render.last.b = blue;
+			render.last.a = alpha;
+			render.last.argb = ARGB;
+
+			buffer.vpointer = buffer.vcount * 4;
+			buffer.cpointer = buffer.vcount;
+			buffer.vcount += count;
+		}
+
+		function renderPull() {
+			if (buffer.vcount === 0) return;
+
+			var transform = gl2d.transform;
+			var cStack = -1;
+			var cARGB = ARGB;
+
+			gl.bindBuffer(gl.ARRAY_BUFFER, buffer.pointer);
+			gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);
+
+			var shaderProgram;
+			var index = 0;
+
+			for (var i = 0; i < render.next; i++) {
+				var r = rendersPull[i];
+
+				if (cStack !== r.cStack) {
+					shaderProgram = gl2d.initShaders(r.cStack + 2, 0);
+
+					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
+					gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
+
+					sendTransformStack(shaderProgram);
+					cStack = r.cStack;
+				}
+
+				if (cARGB !== r.argb) {
+					gl.uniform4f(shaderProgram.uColor, r.r, r.g, r.b, r.a);
+					cARGB = r.argb;
+				}
+
+				
+				gl.drawArrays(r.type, index, 2);
+
+				index += r.count;
+			}
+
+			renderReset();
+		}
+
+		function renderReset() {
+			buffer.vcount = 0;
+			render.next = 0;
+		}
+
+		//mojo runtime patching
+		gxtkGraphics.prototype.BeginRender = function() {
+			if (this.gc) {
+				if (gl2d.width !== this.Width() || gl2d.height !== this.Height()) {
+					gl2d.shaderPool = [];
+					gl2d.initShaders();
+
+					gl2d.width = this.Width();
+					gl2d.height = this.Height();
+					gl.viewport(0, 0, gl2d.width, gl2d.height);
+				}
+				this.gc.save();
+			}
+		}
+
+		gxtkGraphics.prototype.EndRender = function(){
+			if(this.gc) {
+				renderPull();
+				this.gc.restore();
+			}
+		}
+
+		gxtkGraphics.prototype.SetAlpha = function( a ){
+			alpha = a;
+			ARGB = (a << 24) | ((blue * 255) << 16) | ((green * 255) << 8) | red * 255;
+		}
+
+		gxtkGraphics.prototype.SetColor = function(r, g, b){
+			red = r / 255.0;
+			green = g / 255.0;
+			blue = b / 255.0;
+			ARGB = (alpha << 24) | (b << 16) | (g << 8) | r;
+		}
+
+		gxtkGraphics.prototype.SetBlend = function(b){
+			if (blend === b) return;
+			renderPull();
+
+			blend = b;
+
+			switch (blend) {
+				case 1:
+					gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+					break;
+				default:
+					gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+			}
+		}
+
+		gxtkGraphics.prototype.SetScissor = function(x,y,w,h) {
+			renderPull();
+
+			if (x !== 0 || y !== 0 || w !== this.Width() || h !== this.Height()) {
+				gl.enable(gl.SCISSOR_TEST);
+				y = this.Height() - y - h;
+				gl.scissor(x, y, w, h);
+			} else {
+				gl.disable(gl.SCISSOR_TEST);
+			}
+		}
+
+		gxtkGraphics.prototype.Cls = function(r, g, b) {
+			gl.clearColor(r / 255.0, g / 255.0, b / 255.0, 1);
+			gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT );
+		}
+
 		gxtkGraphics.prototype.DrawSurface = function(surface,x,y) {
 			if (!surface.image.complete) return;			
 			this.gc.drawImage(surface.image,x,y);
@@ -225,69 +385,36 @@
 			if (srcw <= 0 || srch <= 0) return;
 
 			this.gc.drawImage( surface.image,srcx,srcy,srcw,srch,x,y,srcw,srch );
-		}
+		}		
 
-		gxtkGraphics.prototype.SetScissor = function(x,y,w,h) {
-			if (x !== 0 || y !== 0 || w !== this.Width() || h !== this.Height()) {
-				gl.enable(gl.SCISSOR_TEST);
-				y = this.Height() - y - h;
-				gl.scissor(x, y, w, h);
+		gxtkGraphics.prototype.DrawLine = function(x1,y1,x2,y2) {
+			var transform = gl2d.transform;
+			renderPush(gl.LINES, 2);
+
+			if( this.tformed ){
+				var x1_t = x1 * this.ix + y1 * this.jx + this.tx;
+				var y1_t = x1 * this.iy + y1 * this.jy + this.ty;
+				var x2_t = x2 * this.ix + y2 * this.jx + this.tx;
+				var y2_t = x2 * this.iy + y2 * this.jy + this.ty;
+
+				buffer.vdata[buffer.vpointer] = x1_t; buffer.vdata[buffer.vpointer + 1] = y1_t;
+				buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0; 
+				buffer.vdata[buffer.vpointer + 4] = x2_t; buffer.vdata[buffer.vpointer + 5] = y2_t; 
+				buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 0;
+
+				render.cStack = transform.c_stack;
+
+				this.gc.setTransform( this.ix,this.iy,this.jx,this.jy,this.tx,this.ty );
 			} else {
-				gl.disable(gl.SCISSOR_TEST);
-			}
-		}
+				buffer.vdata[buffer.vpointer] = x1; buffer.vdata[buffer.vpointer + 1] = y1;
+				buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0; 
+				buffer.vdata[buffer.vpointer + 4] = x2; buffer.vdata[buffer.vpointer + 5] = y2; 
+				buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 0;
 
-		gxtkGraphics.prototype.BeginRender=function() {
-			if( this.gc ) {
-				if (gl2d.width !== this.Width() || gl2d.height !== this.Height()) {
-					gl2d.shaderPool = [];
-					gl2d.initShaders();
-
-					gl2d.width = this.Width();
-					gl2d.height = this.Height();
-					gl.viewport(0, 0, gl2d.width, gl2d.height);
-				}
-				this.gc.save();
-			}
-		}	
-
-		Object.defineProperty(this, "fillStyle", {
-			get: function() { return ""; },
-			set: function(value) {
-				var result = value.slice(4, -1).split(',');
+				render.cStack = transform.c_stack;
+			}	
 			
-				red = result[0] >= 255 ? 1 : result[0] / 255;
-				green = result[1] >= 255 ? 1 : result[1] / 255;
-				blue = result[2] >= 255 ? 1 : result[2] / 255;
-			}
-		});
-
-		Object.defineProperty(this, "strokeStyle", {
-			get: function() { return ""; },
-			set: function(value) { }
-		});
-
-		Object.defineProperty(this, "globalAlpha", {
-			get: function() { return alpha; },
-			set: function(value) {
-				alpha = value;
-			}
-		});	
-
-		Object.defineProperty(this, "globalCompositeOperation", {
-			get: function() { return blend },
-			set: function(value) {
-				if (blend === value) return;
-
-				if (value === "lighter") {
-					gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-				} else {
-					gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-				}
-
-				blend = value;
-			}
-		});
+		}		
 
 		this.save = function save() {
 			gl2d.transform.pushMatrix();
