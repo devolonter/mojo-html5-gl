@@ -266,7 +266,7 @@
 
 			var transform = gl2d.transform;
 			var cStack = -1;
-			var cARGB = ARGB;
+			var cARGB = 0;
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, buffer.pointer);
 			gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);
@@ -282,6 +282,7 @@
 
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
 					gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
+					cARGB = ARGB;
 
 					sendTransformStack(shaderProgram);
 					cStack = r.cStack;
@@ -292,9 +293,7 @@
 					cARGB = r.argb;
 				}
 
-				
-				gl.drawArrays(r.type, index, 2);
-
+				gl.drawArrays(r.type, index, r.count);
 				index += r.count;
 			}
 
