@@ -210,27 +210,10 @@
 				sMask: 0,
 				cStack: 0,
 				crop: false,
-				x: 0, y: 0, width: 0, height: 0,
-				srcx: 0, srcy: 0,
+				srcx: 0, srcy: 0, srcw: 0, srch: 0,
 				r: red, g: green, b: blue, a: alpha, argb: ARGB
 			}
-		}		
-
-		var rectVertexPositionBuffer;
-		var pathVertexPositionBuffer;
-
-		var rectVerts = new Float32Array([
-			0,0, 0,0,
-			0,1, 0,1,
-			1,1, 1,1,
-			1,0, 1,0
-		]);		
-
-		rectVertexPositionBuffer = gl.createBuffer();
-		pathVertexPositionBuffer = gl.createBuffer();
-
-		gl.bindBuffer(gl.ARRAY_BUFFER, rectVertexPositionBuffer);
-		gl.bufferData(gl.ARRAY_BUFFER, rectVerts, gl.STATIC_DRAW);
+		}
 
 		gl.viewport(0, 0, gl2d.width, gl2d.height);
 
@@ -272,12 +255,12 @@
 
 			var transform = gl2d.transform;
 			var cStack = -1;
+			var dStack = 0;
 			var cSMask = 0;
 			var cARGB = 0;
 			var cTexture = null;
 
-			gl.bindBuffer(gl.ARRAY_BUFFER, buffer.pointer);
-			gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);
+			gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);		
 
 			var shaderProgram;
 			var index = 0;
@@ -285,17 +268,8 @@
 			for (var i = 0; i < render.next; i++) {
 				var r = rendersPull[i];
 
-				if (r.texture !== null) {
-					transform.pushMatrix();
-
-					transform.translate(r.x, r.y);
-					transform.scale(r.width, r.height);
-
-					cStack = transform.c_stack;
-				}
-
 				if (cStack !== r.cStack || cSMask !== r.sMask) {
-					shaderProgram = gl2d.initShaders(r.cStack + 2, r.sMask);
+					shaderProgram = gl2d.initShaders(r.cStack + 1, r.sMask);
 
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
 					gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
@@ -325,14 +299,10 @@
 
 				if (r.crop) {
 					gl.uniform4f(shaderProgram.uCropSource, r.srcx / r.texture.width, 
-								r.srcy / r.texture.height, r.width / r.texture.width, r.height / r.texture.height);
+								r.srcy / r.texture.height, r.srcw / r.texture.width, r.srch / r.texture.height);
 				}
 
 				gl.drawArrays(r.type, index, r.count);
-
-				if (r.texture !== null) {
-					transform.popMatrix();
-				}
 
 				index += r.count;
 			}
@@ -357,6 +327,8 @@
 					gl.viewport(0, 0, gl2d.width, gl2d.height);
 				}
 				this.gc.save();
+
+				gl.bindBuffer(gl.ARRAY_BUFFER, buffer.pointer);			
 			}
 		}
 
@@ -411,44 +383,83 @@
 			gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT );
 		}
 
-		gxtkGraphics.prototype.DrawLine = function(x1,y1,x2,y2) {
+		gxtkGraphics.prototype.DrawPoint = function(x, y){
+			renderPush(gl.POINTS, 1);
+			
+			buffer.vdata[buffer.vpointer] = x;
+			buffer.vdata[buffer.vpointer + 1] = y;
+		}
+
+		gxtkGraphics.prototype.DrawLine = function(x1, y1, x2, y2) {
 			renderPush(gl.LINES, 2);
 
-			if( this.tformed ){
-				var x1_t = x1 * this.ix + y1 * this.jx + this.tx;
-				var y1_t = x1 * this.iy + y1 * this.jy + this.ty;
-				var x2_t = x2 * this.ix + y2 * this.jx + this.tx;
-				var y2_t = x2 * this.iy + y2 * this.jy + this.ty;
-
-				buffer.vdata[buffer.vpointer] = x1_t; buffer.vdata[buffer.vpointer + 1] = y1_t;
-				buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0; 
-				buffer.vdata[buffer.vpointer + 4] = x2_t; buffer.vdata[buffer.vpointer + 5] = y2_t; 
-				buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 0;		
-			} else {
-				buffer.vdata[buffer.vpointer] = x1; buffer.vdata[buffer.vpointer + 1] = y1;
-				buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0; 
-				buffer.vdata[buffer.vpointer + 4] = x2; buffer.vdata[buffer.vpointer + 5] = y2; 
-				buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 0;
-			}						
+			buffer.vdata[buffer.vpointer] = x1; buffer.vdata[buffer.vpointer + 1] = y1;
+			buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0; 
+			buffer.vdata[buffer.vpointer + 4] = x2; buffer.vdata[buffer.vpointer + 5] = y2; 
+			buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 0;
 		}
+
+		gxtkGraphics.prototype.DrawRect = function(x, y, w, h){
+			renderPush(gl.TRIANGLE_FAN, 4);
+		
+			buffer.vdata[buffer.vpointer] = x; 
+			buffer.vdata[buffer.vpointer + 1] = y; 
+			buffer.vdata[buffer.vpointer + 2] = 0; 
+			buffer.vdata[buffer.vpointer + 3] = 0;
+			buffer.vdata[buffer.vpointer + 4] = x; 
+			buffer.vdata[buffer.vpointer + 5] = y + h; 
+			buffer.vdata[buffer.vpointer + 6] = 0; 
+			buffer.vdata[buffer.vpointer + 7] = 1;
+			buffer.vdata[buffer.vpointer + 8] = x + w; 
+			buffer.vdata[buffer.vpointer + 9] = y + h; 
+			buffer.vdata[buffer.vpointer + 10] = 1; 
+			buffer.vdata[buffer.vpointer + 11] = 1;
+			buffer.vdata[buffer.vpointer + 12] = x + w; 
+			buffer.vdata[buffer.vpointer + 13] = y; 
+			buffer.vdata[buffer.vpointer + 14] = 1; 
+			buffer.vdata[buffer.vpointer + 15] = 0;
+		}
+
+		gxtkGraphics.prototype.DrawOval = function(x, y, w, h) {
+			var xr = w / 2.0;
+			var yr = h / 2.0;
+
+			var segs;	
+			segs = parseInt(Math.abs(xr) + Math.abs(yr));
+
+			if( segs > MAX_VERTICES){
+				segs = MAX_VERTICES;
+			} else if (segs<12 ){
+				segs=12;
+			} else {
+				segs &=~ 3;
+			}
+		
+			x+=xr;
+			y+=yr;
+
+			renderPush(gl.TRIANGLE_FAN,segs);
+
+			for (var i=0; i < segs; i++) {
+				var th = i * 6.28318531 / segs;
+				var x0 = (x + Math.cos(th) * xr);
+				var y0 = (y + Math.sin(th) * yr);
+
+				buffer.vdata[buffer.vpointer] = x0;
+				buffer.vdata[buffer.vpointer + 1] = y0;
+				buffer.vpointer += 4;
+			}
+		}	
 
 		gxtkGraphics.prototype.DrawPoly = function(verts) {
 			if (verts.length < 6 || verts.length > MAX_VERTICES * 2) return;
 	
 			renderPush(gl.TRIANGLE_FAN, verts.length / 2);
 			
-			if (this.tformed) {
-				for (var i = 0; i < verts.length; i += 2) {
-					buffer.vdata[buffer.vpointer] = verts[i] * this.ix + verts[i + 1] * this.jx + this.tx;
-					buffer.vdata[buffer.vpointer + 1] = verts[i] * this.iy + verts[i + 1] * this.jy + this.ty;
-					buffer.vpointer += 4;
-				}
-			} else {
-				for (var i = 0; i < verts.length; i += 2) {
-					buffer.vdata[buffer.vpointer] = verts[i];
-					buffer.vdata[buffer.vpointer + 1] = verts[i + 1];
-					buffer.vpointer += 4;
-				}
+			for (var i = 0; i < verts.length; i += 2) {
+				buffer.vdata[buffer.vpointer] = verts[i];
+				buffer.vdata[buffer.vpointer + 1] = verts[i + 1];
+				buffer.vpointer += 4;
 			}
 		}
 
@@ -465,21 +476,29 @@
 				}
 			}
 
+			renderPull();
+
 			renderPush(gl.TRIANGLE_FAN, 4);
 
-			render.last.x = x; render.last.y = y;
-			render.last.width = surface.swidth; render.last.height = surface.sheight;
 			render.last.texture = surface.image.texture;
 			render.last.sMask = shaderMask.texture;
 
-			buffer.vdata[buffer.vpointer] = 0; buffer.vdata[buffer.vpointer + 1] = 0; 
-			buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0;
-			buffer.vdata[buffer.vpointer + 4] = 0; buffer.vdata[buffer.vpointer + 5] = 1; 
-			buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 1;
-			buffer.vdata[buffer.vpointer + 8] = 1; buffer.vdata[buffer.vpointer + 9] = 1; 
-			buffer.vdata[buffer.vpointer + 10] = 1; buffer.vdata[buffer.vpointer + 11] = 1;
-			buffer.vdata[buffer.vpointer + 12] = 1; buffer.vdata[buffer.vpointer + 13] = 0; 
-			buffer.vdata[buffer.vpointer + 14] = 1; buffer.vdata[buffer.vpointer + 15] = 0;
+			buffer.vdata[buffer.vpointer] = x; 
+			buffer.vdata[buffer.vpointer + 1] = y; 
+			buffer.vdata[buffer.vpointer + 2] = 0; 
+			buffer.vdata[buffer.vpointer + 3] = 0;
+			buffer.vdata[buffer.vpointer + 4] = x; 
+			buffer.vdata[buffer.vpointer + 5] = y + surface.sheight; 
+			buffer.vdata[buffer.vpointer + 6] = 0; 
+			buffer.vdata[buffer.vpointer + 7] = 1;
+			buffer.vdata[buffer.vpointer + 8] = x + surface.swidth; 
+			buffer.vdata[buffer.vpointer + 9] = y + surface.sheight; 
+			buffer.vdata[buffer.vpointer + 10] = 1; 
+			buffer.vdata[buffer.vpointer + 11] = 1;
+			buffer.vdata[buffer.vpointer + 12] = x + surface.swidth; 
+			buffer.vdata[buffer.vpointer + 13] = y; 
+			buffer.vdata[buffer.vpointer + 14] = 1; 
+			buffer.vdata[buffer.vpointer + 15] = 0;
 		}
 
 		gxtkGraphics.prototype.DrawSurface2 = function(surface, x, y, srcx, srcy, srcw, srch) {
@@ -495,23 +514,36 @@
 				}
 			}
 
+			renderPull();
+
+			if (srcw < 0){ srcx += srcw; srcw =- srcw; }
+			if (srch < 0){ srcy += srch; srch =- srch; }
+			if (srcw <= 0 || srch <= 0) return;
+
 			renderPush(gl.TRIANGLE_FAN, 4);
 
-			render.last.x = x; render.last.y = y;
 			render.last.srcx = srcx; render.last.srcy = srcy;
-			render.last.width = srcw; render.last.height = srch;			
+			render.last.srcw = srcw; render.last.srch = srch;			
 			render.last.texture = surface.image.texture;
 			render.last.sMask = shaderMask.texture|shaderMask.crop;
 			render.last.crop = true;
 
-			buffer.vdata[buffer.vpointer] = 0; buffer.vdata[buffer.vpointer + 1] = 0; 
-			buffer.vdata[buffer.vpointer + 2] = 0; buffer.vdata[buffer.vpointer + 3] = 0;
-			buffer.vdata[buffer.vpointer + 4] = 0; buffer.vdata[buffer.vpointer + 5] = 1; 
-			buffer.vdata[buffer.vpointer + 6] = 0; buffer.vdata[buffer.vpointer + 7] = 1;
-			buffer.vdata[buffer.vpointer + 8] = 1; buffer.vdata[buffer.vpointer + 9] = 1; 
-			buffer.vdata[buffer.vpointer + 10] = 1; buffer.vdata[buffer.vpointer + 11] = 1;
-			buffer.vdata[buffer.vpointer + 12] = 1; buffer.vdata[buffer.vpointer + 13] = 0; 
-			buffer.vdata[buffer.vpointer + 14] = 1; buffer.vdata[buffer.vpointer + 15] = 0;
+			buffer.vdata[buffer.vpointer] = x; 
+			buffer.vdata[buffer.vpointer + 1] = y; 
+			buffer.vdata[buffer.vpointer + 2] = 0; 
+			buffer.vdata[buffer.vpointer + 3] = 0;
+			buffer.vdata[buffer.vpointer + 4] = x; 
+			buffer.vdata[buffer.vpointer + 5] = y + srch; 
+			buffer.vdata[buffer.vpointer + 6] = 0; 
+			buffer.vdata[buffer.vpointer + 7] = 1;
+			buffer.vdata[buffer.vpointer + 8] = x + srcw; 
+			buffer.vdata[buffer.vpointer + 9] = y + srch; 
+			buffer.vdata[buffer.vpointer + 10] = 1; 
+			buffer.vdata[buffer.vpointer + 11] = 1;
+			buffer.vdata[buffer.vpointer + 12] = x + srcw; 
+			buffer.vdata[buffer.vpointer + 13] = y; 
+			buffer.vdata[buffer.vpointer + 14] = 1; 
+			buffer.vdata[buffer.vpointer + 15] = 0;
 		}		
 
 		this.save = function save() {
@@ -553,158 +585,11 @@
 		};
 
 		this.setTransform = function setTransform(m11, m12, m21, m22, dx, dy) {
+			renderPull();
+
 			gl2d.transform.setIdentity();
 			this.transform.apply(this, arguments);
 		};
-
-		this.fillRect = function fillRect(x, y, width, height) {
-			var transform = gl2d.transform;
-			var shaderProgram = gl2d.initShaders(transform.c_stack+2,0);
-
-			
-			gl.bindBuffer(gl.ARRAY_BUFFER, rectVertexPositionBuffer);
-			gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-
-			transform.pushMatrix();
-
-			transform.translate(x, y);
-			transform.scale(width, height);
-
-			sendTransformStack(shaderProgram);
-
-			gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
-
-			gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
-
-			transform.popMatrix();
-		};
-
-		var subPaths = [];
-
-		function SubPath(x, y) {
-			this.closed = false;
-			this.verts = [x, y, 0, 0];
-		};
-
-		var beginPath = this.beginPath = function beginPath() {
-      		subPaths.length = 0;
-		};
-
-		var closePath = this.closePath = function closePath() {
-			if (subPaths.length) {
-				var prevPath = subPaths[subPaths.length -1], startX = prevPath.verts[0], startY = prevPath.verts[1];
-				prevPath.closed = true;
-
-				var newPath = new SubPath(startX, startY);
-				subPaths.push(newPath);
-			}
-		};
-
-		var moveTo = this.moveTo = function moveTo(x, y) {
-			subPaths.push(new SubPath(x, y));
-		};
-
-		var lineTo = this.lineTo = function lineTo(x, y) {
-			if (subPaths.length) {
-				subPaths[subPaths.length - 1].verts.push(x, y, 0, 0);
-			} else {
-				moveTo(x, y);
-			}
-	    };
-
-		this.rect = function rect(x, y, w, h) {
-			moveTo(x, y);
-			lineTo(x + w, y);
-			lineTo(x + w, y + h);
-			lineTo(x, y + h);
-			closePath();
-		};
-
-		this.arc = function arc(x, y, radius, startAngle, endAngle, anticlockwise) {
-			//startAngle, endAngle, anticlockwise not implemented
-
-			if (!subPaths.length) {
-				moveTo(x, y + radius);
-				
-				var step = M_HALF_PI * 0.1;
-				var verts = subPaths[0].verts;
-				
-				for (var i = step; i < M_TWO_PI; i+= step) {
-					verts.push(x + Math.sin(i) * radius, y + Math.cos(i) * radius, 0, 0);
-				}
-			} else {
-				var step = M_HALF_PI * 0.1;
-				var verts = subPaths[subPaths.length - 1].verts;
-				
-				for (var i = 0; i < 360; i+= step) {
-					verts.push(x + Math.sin(i) * radius, y + Math.cos(i) * radius, 0, 0);
-				}
-			}
-		};
-
-		function fillSubPath(index) {
-			var transform = gl2d.transform;
-			var shaderProgram = gl2d.initShaders(transform.c_stack + 2,0);
-
-			var subPath = subPaths[index];
-			var verts = subPath.verts;
-
-			gl.bindBuffer(gl.ARRAY_BUFFER, pathVertexPositionBuffer);
-			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
-
-			gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-
-			transform.pushMatrix();
-
-			sendTransformStack(shaderProgram);
-
-			gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
-
-			gl.drawArrays(gl.TRIANGLE_FAN, 0, verts.length/4);
-
-			transform.popMatrix();
-		}		
-
-		this.fill = function fill() {
-			for(var i = 0; i < subPaths.length; i++) {
-				fillSubPath(i);
-			}
-		};
-
-		function strokeSubPath(index) {
-			var transform = gl2d.transform;
-			var shaderProgram = gl2d.initShaders(transform.c_stack + 2,0);
-
-			var subPath = subPaths[index];
-			var verts = subPath.verts;
-
-			gl.bindBuffer(gl.ARRAY_BUFFER, pathVertexPositionBuffer);
-			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
-
-			gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-
-			transform.pushMatrix();
-
-			sendTransformStack(shaderProgram);
-
-			gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
-
-			if (subPath.closed) {
-				gl.drawArrays(gl.LINE_LOOP, 0, verts.length/4);
-			} else {
-				gl.drawArrays(gl.LINE_STRIP, 0, verts.length/4);
-			}
-
-			transform.popMatrix();
-		}
-
-		this.stroke = function stroke() {
-			for(var i = 0; i < subPaths.length; i++) {
-				strokeSubPath(i);
-			}
-		};
-
-		this.clip = function clip() {};
 
 		var imageCache = [], textureCache = [];
 
@@ -758,63 +643,7 @@
 					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 				}
 			}
-		}
-
-		this.drawImage = function drawImage(image, a, b, c, d, e, f, g, h) {
-			var transform = gl2d.transform;
-
-			transform.pushMatrix();
-
-			var sMask = shaderMask.texture;
-			var doCrop = false;
-
-			if (arguments.length === 3) {
-				transform.translate(a, b);
-				transform.scale(image.width, image.height);
-			}
-
-			else if (arguments.length === 5) {
-				transform.translate(a, b);
-				transform.scale(c, d);
-			}
-
-			else if (arguments.length === 9) {
-				transform.translate(e, f);
-				transform.scale(g, h);
-				sMask = sMask|shaderMask.crop;
-				doCrop = true;
-			}
-
-			var shaderProgram = gl2d.initShaders(transform.c_stack, sMask);
-
-			var texture, cacheIndex = imageCache.indexOf(image);
-
-			if (cacheIndex !== -1) {
-				texture = textureCache[cacheIndex];
-			} else {
-				texture = new Texture(image);
-			}
-
-			if (doCrop) {
-				gl.uniform4f(shaderProgram.uCropSource, a/image.width, b/image.height, c/image.width, d/image.height);
-			}
-
-			gl.bindBuffer(gl.ARRAY_BUFFER, rectVertexPositionBuffer);
-			gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-
-			gl.bindTexture(gl.TEXTURE_2D, texture.obj);
-			gl.activeTexture(gl.TEXTURE0);
-
-			gl.uniform1i(shaderProgram.uSampler, 0);
-
-			sendTransformStack(shaderProgram);
-
-			gl.uniform4f(shaderProgram.uColor, red, green, blue, alpha);
-
-			gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
-
-			transform.popMatrix();
-		};
+		}		
 	}
 
 	function isPOT(value) {
