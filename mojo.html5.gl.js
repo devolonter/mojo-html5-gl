@@ -183,7 +183,6 @@
 			vdata: new Float32Array(new Array(MAX_VERTICES * 4)),
 			vcount: 0,
 			vpointer: 0,
-			cpointer: 0,
 			pointer: gl.createBuffer()
 		};
 
@@ -489,7 +488,6 @@
 			render.last.texture = null;
 
 			buffer.vpointer = buffer.vcount * 4;
-			buffer.cpointer = buffer.vcount;
 			buffer.vcount += count;
 		}
 
@@ -501,7 +499,7 @@
 			var index = 0;
 			var r;
 
-			gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);		
+			gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);
 
 			switch (mode) {
 				case MODE_NONE:
