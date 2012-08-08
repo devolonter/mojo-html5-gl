@@ -73,36 +73,25 @@
 		return fsSource;
 	};
 
-	WebGL2D.prototype.getVertexShaderSource = function getVertexShaderSource(stackDepth,sMask) {
+	WebGL2D.prototype.getVertexShaderSource = function getVertexShaderSource(sMask) {
 		var w = 2 / this.canvas.width, h = -2 / this.canvas.height;
-
-		stackDepth = stackDepth || 1;
 
 		var vsSource = [
 			"#define hasTexture " + ((sMask&shaderMask.texture) ? "1" : "0"),
 			"attribute vec4 aVertexPosition;",
 
 			"#if hasTexture",
-			"varying vec2 vTextureCoord;",
+				"varying vec2 vTextureCoord;",
 			"#endif",
 
 			"uniform vec4 uColor;",
-			"uniform mat3 uTransforms[" + stackDepth + "];",
 
 			"varying vec4 vColor;",
 
 			"const mat4 pMatrix = mat4(" + w + ",0,0,0, 0," + h + ",0,0, 0,0,1.0,1.0, -1.0,1.0,0,0);",
 
-			"mat3 crunchStack(void) {",
-				"mat3 result = uTransforms[0];",
-				"for (int i = 1; i < " + stackDepth + "; ++i) {",
-					"result = uTransforms[i] * result;",
-				"}",
-				"return result;",
-			"}",
-
 			"void main(void) {",
-				"vec3 position = crunchStack() * vec3(aVertexPosition.x, aVertexPosition.y, 1.0);",
+				"vec3 position = vec3(aVertexPosition.x, aVertexPosition.y, 1.0);",
 				"gl_Position = pMatrix * vec4(position, 1.0);",
 				"vColor = uColor;",
 				"#if hasTexture",
@@ -114,14 +103,13 @@
 		return vsSource;
 	};
 
-	WebGL2D.prototype.initShaders = function initShaders(transformStackDepth,sMask) {
+	WebGL2D.prototype.initShaders = function initShaders(sMask) {
 		var gl = this.gl;
 
-		transformStackDepth = transformStackDepth || 1;
 		sMask = sMask || 0;
-		var storedShader = this.shaderPool[transformStackDepth];
+		var storedShader = this.shaderPool;
 
-		if (!storedShader) { storedShader = this.shaderPool[transformStackDepth] = []; }
+		if (!storedShader) { storedShader = this.shaderPool = []; }
 		storedShader = storedShader[sMask];
 
 		if (storedShader) {
@@ -138,7 +126,7 @@
 			}
 
 			var vs = this.vs = gl.createShader(gl.VERTEX_SHADER);
-			gl.shaderSource(this.vs, this.getVertexShaderSource(transformStackDepth,sMask));
+			gl.shaderSource(this.vs, this.getVertexShaderSource(sMask));
 			gl.compileShader(this.vs);
 
 			if (!gl.getShaderParameter(this.vs, gl.COMPILE_STATUS)) {
@@ -146,7 +134,6 @@
 			}
 
 			var shaderProgram = this.shaderProgram = gl.createProgram();
-			shaderProgram.stackDepth = transformStackDepth;
 			gl.attachShader(shaderProgram, fs);
 			gl.attachShader(shaderProgram, vs);
 			gl.linkProgram(shaderProgram);
@@ -164,11 +151,7 @@
 			shaderProgram.uSampler = gl.getUniformLocation(shaderProgram, 'uSampler');
 			shaderProgram.uCropSource = gl.getUniformLocation(shaderProgram, 'uCropSource');
 
-			shaderProgram.uTransforms = [];
-			for (var i=0; i<transformStackDepth; ++i) {
-				shaderProgram.uTransforms[i] = gl.getUniformLocation(shaderProgram, 'uTransforms[' + i + ']');
-			}
-			this.shaderPool[transformStackDepth][sMask] = shaderProgram;
+			this.shaderPool[sMask] = shaderProgram;
 			return shaderProgram;
 		}
 	};	
@@ -176,8 +159,8 @@
 	var WebGL2DAPI = this.WebGL2DAPI = function WebGL2DAPI(gl2d) {
 		var gl = gl2d.gl;
 
-		gl2d.width = gl2d.canvas.width;
-		gl2d.height = gl2d.canvas.height;
+		gl2d.width = -1;
+		gl2d.height = -1;
 		gl2d.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 
 		var MAX_VERTICES = parseInt(65536 / 20);
@@ -216,8 +199,6 @@
 			}
 		}
 
-		gl.viewport(0, 0, gl2d.width, gl2d.height);
-
 		gl.clearColor(0, 0, 0, 1);
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -237,17 +218,13 @@
 					gl2d.height = this.Height();
 					gl.viewport(0, 0, gl2d.width, gl2d.height);
 				}
-
-				this.gc.save();				
+			
 				gxtk = this;	
 			}
 		}
 
 		gxtkGraphics.prototype.EndRender = function(){
-			if(this.gc) {
-				renderPull();
-				this.gc.restore();
-			}
+			renderPull();
 		}
 
 		gxtkGraphics.prototype.LoadSurface = function( path ){
@@ -325,7 +302,7 @@
 
 		gxtkGraphics.prototype.Cls = function(r, g, b) {
 			gl.clearColor(r / 255, g / 255, b / 255, 1);
-			gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT );
+			gl.clear(gl.COLOR_BUFFER_BIT);
 		}
 
 		gxtkGraphics.prototype.DrawPoint = function(x, y){
@@ -495,15 +472,6 @@
 			mode = MODE_CROPPED;
 		}
 
-		//helper functions
-		this.save = function save() {
-			gl2d.transform.pushMatrix();
-		};
-
-		this.restore = function restore() {
-			gl2d.transform.popMatrix();
-		};
-
 		function renderPush(type, count) {
 			if (buffer.vcount + count > MAX_VERTICES || render.next === MAX_RENDERS) {
 				renderPull();
@@ -534,12 +502,10 @@
 
 			switch (mode) {
 				case MODE_NONE:
-					shaderProgram = gl2d.initShaders(transform.c_stack + 1, 0);
+					shaderProgram = gl2d.initShaders(0);
 
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
 					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
-
-					sendTransformStack(shaderProgram);
 
 					for (var i = 0; i < render.next; i++) {
 						r = rendersPull[i];
@@ -551,12 +517,10 @@
 					break;
 
 				case MODE_TEXTURED:
-					shaderProgram = gl2d.initShaders(transform.c_stack + 1, shaderMask.texture);
+					shaderProgram = gl2d.initShaders(shaderMask.texture);
 
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
 					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
-
-					sendTransformStack(shaderProgram);
 
 					for (var i = 0; i < render.next; i++) {
 						r = rendersPull[i];
@@ -576,12 +540,10 @@
 					break;
 
 				case MODE_CROPPED:
-					shaderProgram = gl2d.initShaders(transform.c_stack + 1, shaderMask.texture|shaderMask.crop);
+					shaderProgram = gl2d.initShaders(shaderMask.texture|shaderMask.crop);
 
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
 					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
-
-					sendTransformStack(shaderProgram);
 
 					for (var i = 0; i < render.next; i++) {
 						r = rendersPull[i];
@@ -648,14 +610,7 @@
 			buffer.vdata[buffer.vpointer + 13] = y3; 
 			buffer.vdata[buffer.vpointer + 14] = 0; 
 			buffer.vdata[buffer.vpointer + 15] = 1;
-		}	
-
-		function sendTransformStack(sp) {
-			var stack = gl2d.transform.m_stack;
-			for (var i = 0, maxI = gl2d.transform.c_stack + 1; i < maxI; ++i) {
-				gl.uniformMatrix3fv(sp.uTransforms[i], false, stack[maxI-1-i]);
-			}
-		};		
+		}		
 
 		function Texture(image) {
 			this.obj = gl.createTexture();
