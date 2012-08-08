@@ -192,10 +192,10 @@
 			next: 0
 		}
 
-		var rendersPull = new Array(MAX_RENDERS);
+		var rendersPool = new Array(MAX_RENDERS);
 
-		for (var i = 0; i < rendersPull.length; i++) {
-			rendersPull[i] = {
+		for (var i = 0; i < rendersPool.length; i++) {
+			rendersPool[i] = {
 				type: -1,
 				count: 0,
 				texture: null,
@@ -481,7 +481,7 @@
 				renderPull();
 			}
 
-			render.last = rendersPull[render.next];
+			render.last = rendersPool[render.next];
 			render.next += 1;
 
 			render.last.type = type;
@@ -511,7 +511,7 @@
 					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
 
 					for (var i = 0; i < render.next; i++) {
-						r = rendersPull[i];
+						r = rendersPool[i];
 
 						gl.drawArrays(r.type, index, r.count);
 
@@ -526,7 +526,7 @@
 					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
 
 					for (var i = 0; i < render.next; i++) {
-						r = rendersPull[i];
+						r = rendersPool[i];
 
 						if (cTexture !== r.texture) {
 							gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
@@ -549,7 +549,7 @@
 					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
 
 					for (var i = 0; i < render.next; i++) {
-						r = rendersPull[i];
+						r = rendersPool[i];
 
 						if (cTexture !== r.texture) {
 							gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
