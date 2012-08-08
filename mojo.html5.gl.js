@@ -40,66 +40,71 @@
 	};
 
 	WebGL2D.prototype.getFragmentShaderSource = function getFragmentShaderSource(sMask) {
-		var fsSource = [
+		var fsSource = [];
+
+		fsSource.push(
 			"precision mediump float;",
+			"varying vec4 vColor;"
+		);
 
-			"#define hasTexture " + ((sMask&shaderMask.texture) ? "1" : "0"),
-			"#define hasCrop " + ((sMask&shaderMask.crop) ? "1" : "0"),
-
-			"varying vec4 vColor;",
-
-			"#if hasTexture",
+		if (sMask&shaderMask.texture) {
+			fsSource.push(
 				"varying vec2 vTextureCoord;",
-				"uniform sampler2D uSampler;",
-				"#if hasCrop",
-					"uniform vec4 uCropSource;",
-				"#endif",
-			"#endif",
+				"uniform sampler2D uSampler;"
+			);
 
-			"void main(void) {",
-				"#if hasTexture",
-					"#if hasCrop",
-						"gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.x * uCropSource.z, vTextureCoord.y * uCropSource.w) + uCropSource.xy) * vColor;",
-					"#else",
-						"gl_FragColor = texture2D(uSampler, vTextureCoord) * vColor;",
-					"#endif",
-				"#else",
-					"gl_FragColor = vColor;",
-				"#endif",
-			"}"
-		].join("\n");
+			if (sMask&shaderMask.crop) {
+				fsSource.push("uniform vec4 uCropSource;");
+			}
+		}
 
-		return fsSource;
+		fsSource.push("void main(void) {");
+
+		if (sMask&shaderMask.texture) {
+			if (sMask&shaderMask.crop) {
+				fsSource.push("gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.x * uCropSource.z, vTextureCoord.y * uCropSource.w) + uCropSource.xy) * vColor;");
+			} else {
+				fsSource.push("gl_FragColor = texture2D(uSampler, vTextureCoord) * vColor;");
+			}
+		} else {
+			fsSource.push("gl_FragColor = vColor;");
+		}
+
+		fsSource.push("}");
+
+		return fsSource.join("\n");
 	};
 
 	WebGL2D.prototype.getVertexShaderSource = function getVertexShaderSource(sMask) {
 		var w = 2 / this.canvas.width, h = -2 / this.canvas.height;
 
-		var vsSource = [
-			"#define hasTexture " + ((sMask&shaderMask.texture) ? "1" : "0"),
+		var vsSource = [];
+
+		vsSource.push(
 			"attribute vec4 aVertexPosition;",
-
-			"#if hasTexture",
-				"varying vec2 vTextureCoord;",
-			"#endif",
-
 			"uniform vec4 uColor;",
-
 			"varying vec4 vColor;",
+			"const mat4 pMatrix = mat4(" + w + ",0,0,0, 0," + h + ",0,0, 0,0,1.0,1.0, -1.0,1.0,0,0);"
+		);
 
-			"const mat4 pMatrix = mat4(" + w + ",0,0,0, 0," + h + ",0,0, 0,0,1.0,1.0, -1.0,1.0,0,0);",
+		if (sMask&shaderMask.texture) {
+			vsSource.push("varying vec2 vTextureCoord;");
+		}
 
+		vsSource.push(
 			"void main(void) {",
-				"vec3 position = vec3(aVertexPosition.x, aVertexPosition.y, 1.0);",
-				"gl_Position = pMatrix * vec4(position, 1.0);",
-				"vColor = uColor;",
-				"#if hasTexture",
-					"vTextureCoord = aVertexPosition.zw;",
-				"#endif",
-			"}"
-		].join("\n");
+			"vec3 position = vec3(aVertexPosition.x, aVertexPosition.y, 1.0);",
+			"gl_Position = pMatrix * vec4(position, 1.0);",
+			"vColor = uColor;"
+		);
 
-		return vsSource;
+		if (sMask&shaderMask.texture) {
+			vsSource.push("vTextureCoord = aVertexPosition.zw;");
+		}
+
+		vsSource.push("}");
+
+		return vsSource.join("\n");
 	};
 
 	WebGL2D.prototype.initShaders = function initShaders(sMask) {
