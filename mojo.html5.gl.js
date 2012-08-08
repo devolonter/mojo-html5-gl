@@ -42,9 +42,7 @@
 
 	WebGL2D.prototype.getFragmentShaderSource = function getFragmentShaderSource(sMask) {
 		var fsSource = [
-			"#ifdef GL_ES",
-				"precision highp float;",
-			"#endif",
+			"precision mediump float;",
 
 			"#define hasTexture " + ((sMask&shaderMask.texture) ? "1" : "0"),
 			"#define hasCrop " + ((sMask&shaderMask.crop) ? "1" : "0"),
