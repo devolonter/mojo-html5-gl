@@ -7,7 +7,7 @@ Features
 =
 ______________________________________________________
 * It does not require code changes
-* High SetBlend performance 
+* High SetBlend performance for images
 * High SetColor performance for images 
 * #MOJO_IMAGE_FILTERING_ENABLED support
 * Support [IEWebGL](http://iewebgl.com/) and [Chrome Frame](http://www.google.com/chromeframe)
