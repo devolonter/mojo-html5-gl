@@ -1,7 +1,7 @@
 Mojo HTML5 GL
 =
 ______________________________________________________
-An experimental patch for [mojo](http://monkeycoder.co.nz/), that replaces the standard 2d-context with WebGL. The patch is based on the library [WebGL-2D](https://github.com/gameclosure/webgl-2d).
+An experimental patch for [mojo](http://monkeycoder.co.nz/), that replaces the standard 2d-context with WebGL.
 
 Features
 =
@@ -12,12 +12,7 @@ ______________________________________________________
 * #MOJO_IMAGE_FILTERING_ENABLED support
 * Support [IEWebGL](http://iewebgl.com/) and [Chrome Frame](http://www.google.com/chromeframe)
 * It works in browsers that do not support WebGL (2d-context used)
-* Small file size - 14KB only!
-
-Known Issues
-=
-______________________________________________________
-* It probably can works slower with a big quantity of transformations and primitives
+* Small file size - 11KB only!
 
 Usage
 =
