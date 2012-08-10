@@ -166,6 +166,7 @@
 		gl2d.width = -1;
 		gl2d.height = -1;
 		gl2d.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+		if (!isPOT(gl2d.maxTextureSize)) gl2d.maxTextureSize += 1;
 
 		var MAX_VERTICES = parseInt(65536 / 20);
 		var MAX_RENDERS = parseInt(MAX_VERTICES / 2);
