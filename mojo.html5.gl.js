@@ -622,7 +622,7 @@
 			this.width = image.meta_width;
 			this.height = image.meta_height;
 
-			var mojoFilteringEnabled = (typeof(CFG_MOJO_IMAGE_FILTERING_ENABLED) === "undefined" || CFG_MOJO_IMAGE_FILTERING_ENABLED === "true");
+			var mojoFilteringEnabled = (typeof(CFG_MOJO_IMAGE_FILTERING_ENABLED) === "undefined" || CFG_MOJO_IMAGE_FILTERING_ENABLED === "true" || CFG_MOJO_IMAGE_FILTERING_ENABLED === "1");
 
 			if (image.width > gl2d.maxTextureSize || image.height > gl2d.maxTextureSize) {
 				var canvas = document.createElement("canvas");
