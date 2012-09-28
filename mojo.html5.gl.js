@@ -181,7 +181,7 @@
 		var imageCache = [], textureCache = [];
 
 		var buffer = {
-			vdata: new Float32Array(new Array(MAX_VERTICES * 4)),
+			vdata: new Float32Array(MAX_VERTICES * 4),
 			vcount: 0,
 			vpointer: 0,
 			pointer: gl.createBuffer()
@@ -476,6 +476,24 @@
 			mode = MODE_CROPPED;
 		}
 
+		gxtkGraphics.prototype.ReadPixels = function(pixels, x, y, width, height, offset, pitch ) {
+			renderPull();
+
+			var data = new Uint8Array(width * height * 4);
+			gl.readPixels(x, this.Height() - y - height, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
+
+			var i = 0;
+			for(var py = height-1; py >= 0; --py) {
+				var j = offset + py * pitch;
+				for(var px = 0; px < width; ++px) {
+					pixels[j++] = (data[i+3]<<24) | (data[i]<<16) | (data[i+1]<<8) | data[i+2];
+					i+=4;
+				}
+			}
+		
+			return 0;
+		}
+
 		function renderPush(type, count) {
 			if (buffer.vcount + count > MAX_VERTICES || render.next === MAX_RENDERS) {
 				renderPull();
@@ -695,6 +713,11 @@
 			var tryIEWebGL = document.createElement("object");
 			
 			tryIEWebGL.onreadystatechange = function() {
+				try {
+					var gl = tryIEWebGL.getContext("webgl");
+					gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(canvas.width * canvas.height * 4));
+				} catch (e) { return; }
+				
 				var canvas = document.getElementById(id);
 				var IEWebGL = document.createElement("object");
 				
