@@ -340,7 +340,7 @@
 			renderPush(gl.LINES, 2);
 
 			if (this.tformed) {
-				var tx0 = x0, tx1 = x1;
+				var tx0 = x1, tx1 = x2;
 				x1 = tx0 * this.ix + y1 * this.jx + this.tx;
 				y1 = tx0 * this.iy + y1 * this.jy + this.ty;
 				x2 = tx1 * this.ix + y2 * this.jx + this.tx;
@@ -490,8 +490,6 @@
 					i+=4;
 				}
 			}
-		
-			return 0;
 		}
 
 		function renderPush(type, count) {
