@@ -398,8 +398,8 @@
 				if (this.tformed){
 					var tx0 = x0;
 
-					x0 = tx0 * this.ix + y0 * jx + this.tx;
-					y0 = tx0 * this.iy + y0 * jy + this.ty;
+					x0 = tx0 * this.ix + y0 * this.jx + this.tx;
+					y0 = tx0 * this.iy + y0 * this.jy + this.ty;
 				}
 
 				buffer.vdata[buffer.vpointer] = x0;
