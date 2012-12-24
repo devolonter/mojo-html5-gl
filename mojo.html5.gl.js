@@ -185,7 +185,7 @@
 
 		var buffer = {
 			vdata: new Float32Array(MAX_VERTICES * 4),
-			cdata: new Float32Array(MAX_VERTICES * 4 * 4),
+			cdata: new Float32Array(MAX_VERTICES * 4),
 			vcount: 0,
 			vpointer: 0,
 			cpointer: 0,
@@ -511,6 +511,7 @@
 			render.last.texture = null;
 
 			buffer.vpointer = buffer.vcount * 4;
+			buffer.cpointer = buffer.vcount * 4;
 			buffer.vcount += count;			
 
 			var p = buffer.cpointer;
@@ -522,8 +523,6 @@
 				buffer.cdata[p + 3] = alpha;
 				p += 4;
 			}
-
-			buffer.cpointer += count * 4;
 		}
 
 		function renderPull() {
@@ -620,7 +619,6 @@
 
 		function renderReset() {
 			buffer.vcount = 0;
-			buffer.cpointer = 0;
 			render.next = 0;
 			mode = MODE_NONE;
 		}
