@@ -52,20 +52,12 @@
 				"varying vec2 vTextureCoord;",
 				"uniform sampler2D uSampler;"
 			);
-
-			if (sMask&shaderMask.crop) {
-				fsSource.push("uniform vec4 uCropSource;");
-			}
 		}
 
 		fsSource.push("void main(void) {");
 
 		if (sMask&shaderMask.texture) {
-			if (sMask&shaderMask.crop) {
-				fsSource.push("gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.x * uCropSource.z, vTextureCoord.y * uCropSource.w) + uCropSource.xy) * vColor;");
-			} else {
-				fsSource.push("gl_FragColor = texture2D(uSampler, vTextureCoord) * vColor;");
-			}
+			fsSource.push("gl_FragColor = texture2D(uSampler, vTextureCoord) * vColor;");
 		} else {
 			fsSource.push("gl_FragColor = vColor;");
 		}
@@ -204,8 +196,7 @@
 			rendersPool[i] = {
 				type: -1,
 				count: 0,
-				texture: null,
-				srcx: 0, srcy: 0, srcw: 0, srch: 0
+				texture: null
 			}
 		}
 
@@ -462,7 +453,7 @@
 
 		gxtkGraphics.prototype.DrawSurface2 = function(surface, x, y, srcx, srcy, srcw, srch) {
 			if (!surface.image.complete) return;
-			if (mode !== MODE_CROPPED) renderPull();
+			if (mode !== MODE_TEXTURED) renderPull();
 
 			if (!surface.image.texture) {
 				var cacheIndex = imageCache.indexOf(surface.image);
@@ -474,12 +465,12 @@
 				}
 			}
 
-			renderPushRect(x, y, srcw, srch);
-			render.last.srcx = srcx; render.last.srcy = srcy;
-			render.last.srcw = srcw; render.last.srch = srch;
+			renderPushRect2(x, y, srcw, srch, srcx / surface.image.texture.width, 
+				srcy / surface.image.texture.height, (srcx + srcw) / surface.image.texture.width, (srcy + srch) / surface.image.texture.height);
+
 			render.last.texture = surface.image.texture;
 
-			mode = MODE_CROPPED;
+			mode = MODE_TEXTURED;
 		}
 
 		gxtkGraphics.prototype.ReadPixels = function(pixels, x, y, width, height, offset, pitch ) {
@@ -581,37 +572,6 @@
 						index += r.count;
 					}
 					break;
-
-				case MODE_CROPPED:
-					shaderProgram = gl2d.initShaders(shaderMask.texture|shaderMask.crop);
-
-					gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vbuffer);
-					gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);
-					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-
-					gl.bindBuffer(gl.ARRAY_BUFFER, buffer.cbuffer);			
-					gl.bufferData(gl.ARRAY_BUFFER, buffer.cdata, gl.DYNAMIC_DRAW);
-					gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
-
-					for (var i = 0; i < render.next; i++) {
-						r = rendersPool[i];
-
-						if (cTexture !== r.texture) {
-							gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
-							gl.activeTexture(gl.TEXTURE0);
-							gl.uniform1i(shaderProgram.uSampler, 0);
-
-							cTexture = r.texture;
-						}
-
-						gl.uniform4f(shaderProgram.uCropSource, r.srcx / r.texture.width, 
-								r.srcy / r.texture.height, r.srcw / r.texture.width, r.srch / r.texture.height);
-
-						gl.drawArrays(r.type, index, r.count);
-
-						index += r.count;
-					}
-					break;
 			}
 
 			renderReset();
@@ -660,7 +620,49 @@
 			buffer.vdata[p + 13] = y3; 
 			buffer.vdata[p + 14] = 0; 
 			buffer.vdata[p + 15] = 1;			
-		}		
+		}
+
+		function renderPushRect2(x, y, w, h, u0, v0, u1, v1) {
+			renderPush(gl.TRIANGLE_FAN, 4);
+
+			var x0 = x, x1 = x + w, x2 = x + w, x3 = x;
+			var y0 = y, y1 = y, y2 = y+h, y3 = y + h;
+			
+			if (gxtk.tformed) {
+				var tx0 = x0,tx1 = x1,tx2 = x2,tx3 = x3;
+				
+				x0 = tx0 * gxtk.ix + y0 * gxtk.jx + gxtk.tx;
+				y0 = tx0 * gxtk.iy + y0 * gxtk.jy + gxtk.ty;
+				x1 = tx1 * gxtk.ix + y1 * gxtk.jx + gxtk.tx;
+				y1 = tx1 * gxtk.iy + y1 * gxtk.jy + gxtk.ty;
+				x2 = tx2 * gxtk.ix + y2 * gxtk.jx + gxtk.tx;
+				y2 = tx2 * gxtk.iy + y2 * gxtk.jy + gxtk.ty;
+				x3 = tx3 * gxtk.ix + y3 * gxtk.jx + gxtk.tx;
+				y3 = tx3 * gxtk.iy + y3 * gxtk.jy + gxtk.ty;
+			}
+
+			var p = buffer.vpointer;
+		
+			buffer.vdata[p] = x0; 
+			buffer.vdata[p + 1] = y0; 
+			buffer.vdata[p + 2] = u0; 
+			buffer.vdata[p + 3] = v0;
+
+			buffer.vdata[p + 4] = x1; 
+			buffer.vdata[p + 5] = y1; 
+			buffer.vdata[p + 6] = u1;
+			buffer.vdata[p + 7] = v0;
+
+			buffer.vdata[p + 8] = x2;
+			buffer.vdata[p + 9] = y2; 
+			buffer.vdata[p + 10] = u1; 
+			buffer.vdata[p + 11] = v1;
+
+			buffer.vdata[p + 12] = x3; 
+			buffer.vdata[p + 13] = y3; 
+			buffer.vdata[p + 14] = u0; 
+			buffer.vdata[p + 15] = v1;			
+		}
 
 		function Texture(image) {
 			this.obj = gl.createTexture();
