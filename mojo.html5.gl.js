@@ -82,7 +82,7 @@
 
 		vsSource.push(
 			"attribute vec4 aVertexPosition;",
-			"uniform vec4 uColor;",
+			"attribute vec4 aVertexColor;",
 			"varying vec4 vColor;",
 			"const mat4 pMatrix = mat4(" + w + ",0,0,0, 0," + h + ",0,0, 0,0,1.0,1.0, -1.0,1.0,0,0);"
 		);
@@ -95,7 +95,7 @@
 			"void main(void) {",
 			"vec3 position = vec3(aVertexPosition.x, aVertexPosition.y, 1.0);",
 			"gl_Position = pMatrix * vec4(position, 1.0);",
-			"vColor = uColor;"
+			"vColor = aVertexColor;"
 		);
 
 		if (sMask&shaderMask.texture) {
@@ -151,6 +151,9 @@
 			shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
 			gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
 
+			shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
+			gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
+
 			shaderProgram.uColor = gl.getUniformLocation(shaderProgram, 'uColor');
 			shaderProgram.uSampler = gl.getUniformLocation(shaderProgram, 'uSampler');
 			shaderProgram.uCropSource = gl.getUniformLocation(shaderProgram, 'uCropSource');
@@ -182,9 +185,12 @@
 
 		var buffer = {
 			vdata: new Float32Array(MAX_VERTICES * 4),
+			cdata: new Float32Array(MAX_VERTICES * 4 * 4),
 			vcount: 0,
 			vpointer: 0,
-			pointer: gl.createBuffer()
+			cpointer: 0,
+			vbuffer: gl.createBuffer(),
+			cbuffer: gl.createBuffer()
 		};
 
 		var render = {
@@ -207,9 +213,7 @@
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
 		gl.enable(gl.BLEND);
-		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-		gl.bindBuffer(gl.ARRAY_BUFFER, buffer.pointer);	
+		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);		
 
 		//mojo runtime patching
 		gxtkGraphics.prototype.BeginRender = function() {
@@ -259,15 +263,11 @@
 		}
 
 		gxtkGraphics.prototype.SetAlpha = function(a){
-			if (alpha === a) return;
-			renderPull();
 			alpha = a;
 		}
 
 		gxtkGraphics.prototype.SetColor = function(r, g, b){
-			if (red === r && green === g && blue === b) return;
-			renderPull();
-			red = r; green = g; blue = b;
+			red = r / 255; green = g / 255; blue = b / 255;
 		}
 
 		gxtkGraphics.prototype.SetBlend = function(b){
@@ -319,9 +319,11 @@
 				x = px * this.ix + y * this.jx + this.tx;
 				y = px * this.iy + y * this.jy + this.ty;
 			}
+
+			var p = buffer.vpointer;
 			
-			buffer.vdata[buffer.vpointer] = x;
-			buffer.vdata[buffer.vpointer + 1] = y;
+			buffer.vdata[p] = x;
+			buffer.vdata[p + 1] = y;
 
 			mode = MODE_NONE;
 		}		
@@ -347,14 +349,16 @@
 				y2 = tx1 * this.iy + y2 * this.jy + this.ty;
 			}
 
-			buffer.vdata[buffer.vpointer] = x1; 
-			buffer.vdata[buffer.vpointer + 1] = y1;
-			buffer.vdata[buffer.vpointer + 2] = 0; 
-			buffer.vdata[buffer.vpointer + 3] = 0; 
-			buffer.vdata[buffer.vpointer + 4] = x2; 
-			buffer.vdata[buffer.vpointer + 5] = y2; 
-			buffer.vdata[buffer.vpointer + 6] = 0; 
-			buffer.vdata[buffer.vpointer + 7] = 0;
+			var p = buffer.vpointer;
+
+			buffer.vdata[p] = x1; 
+			buffer.vdata[p + 1] = y1;
+			buffer.vdata[p + 2] = 0; 
+			buffer.vdata[p + 3] = 0; 
+			buffer.vdata[p + 4] = x2; 
+			buffer.vdata[p + 5] = y2; 
+			buffer.vdata[p + 6] = 0; 
+			buffer.vdata[p + 7] = 0;
 
 			mode = MODE_NONE;
 		}
@@ -389,6 +393,7 @@
 			y += yr;
 
 			renderPush(gl.TRIANGLE_FAN, segs);
+			var p = buffer.vpointer;
 
 			for (var i=0; i < segs; i++) {
 				var th = i * 6.28318531 / segs;
@@ -402,9 +407,9 @@
 					y0 = tx0 * this.iy + y0 * this.jy + this.ty;
 				}
 
-				buffer.vdata[buffer.vpointer] = x0;
-				buffer.vdata[buffer.vpointer + 1] = y0;
-				buffer.vpointer += 4;
+				buffer.vdata[p] = x0;
+				buffer.vdata[p + 1] = y0;
+				p += 4;
 			}
 
 			mode = MODE_NONE;
@@ -416,18 +421,19 @@
 			if (verts.length < 6 || verts.length > MAX_VERTICES * 2) return;
 	
 			renderPush(gl.TRIANGLE_FAN, verts.length / 2);
+			var p = buffer.vpointer;
 
 			if (this.tformed) {
 				for (var i = 0; i < verts.length; i += 2) {
-					buffer.vdata[buffer.vpointer] = verts[i] * this.ix + verts[i + 1] * this.jx + this.tx;
-					buffer.vdata[buffer.vpointer + 1] = verts[i] * this.iy + verts[i + 1] * this.jy + this.ty;
-					buffer.vpointer += 4;
+					buffer.vdata[p] = verts[i] * this.ix + verts[i + 1] * this.jx + this.tx;
+					buffer.vdata[p + 1] = verts[i] * this.iy + verts[i + 1] * this.jy + this.ty;
+					p += 4;
 				}
 			} else {			
 				for (var i = 0; i < verts.length; i += 2) {
-					buffer.vdata[buffer.vpointer] = verts[i];
-					buffer.vdata[buffer.vpointer + 1] = verts[i + 1];
-					buffer.vpointer += 4;
+					buffer.vdata[p] = verts[i];
+					buffer.vdata[p + 1] = verts[i + 1];
+					p += 4;
 				}
 			}
 
@@ -505,7 +511,19 @@
 			render.last.texture = null;
 
 			buffer.vpointer = buffer.vcount * 4;
-			buffer.vcount += count;
+			buffer.vcount += count;			
+
+			var p = buffer.cpointer;
+
+			for (var i = 0; i < count; i++) {
+				buffer.cdata[p] = red; 
+				buffer.cdata[p + 1] = green; 
+				buffer.cdata[p + 2] = blue; 
+				buffer.cdata[p + 3] = alpha;
+				p += 4;
+			}
+
+			buffer.cpointer += count * 4;
 		}
 
 		function renderPull() {
@@ -514,16 +532,19 @@
 			var shaderProgram = gl2d.shaderProgram;
 			var cTexture = null;
 			var index = 0;
-			var r;
-
-			gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);
+			var r;			
 
 			switch (mode) {
 				case MODE_NONE:
 					shaderProgram = gl2d.initShaders(0);
 
+					gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vbuffer);
+					gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
+
+					gl.bindBuffer(gl.ARRAY_BUFFER, buffer.cbuffer);			
+					gl.bufferData(gl.ARRAY_BUFFER, buffer.cdata, gl.DYNAMIC_DRAW);
+					gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
 
 					for (var i = 0; i < render.next; i++) {
 						r = rendersPool[i];
@@ -537,8 +558,13 @@
 				case MODE_TEXTURED:
 					shaderProgram = gl2d.initShaders(shaderMask.texture);
 
+					gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vbuffer);
+					gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
+
+					gl.bindBuffer(gl.ARRAY_BUFFER, buffer.cbuffer);			
+					gl.bufferData(gl.ARRAY_BUFFER, buffer.cdata, gl.DYNAMIC_DRAW);
+					gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
 
 					for (var i = 0; i < render.next; i++) {
 						r = rendersPool[i];
@@ -560,8 +586,13 @@
 				case MODE_CROPPED:
 					shaderProgram = gl2d.initShaders(shaderMask.texture|shaderMask.crop);
 
+					gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vbuffer);
+					gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);
 					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
-					gl.uniform4f(shaderProgram.uColor, red / 255, green / 255, blue / 255, alpha);
+
+					gl.bindBuffer(gl.ARRAY_BUFFER, buffer.cbuffer);			
+					gl.bufferData(gl.ARRAY_BUFFER, buffer.cdata, gl.DYNAMIC_DRAW);
+					gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
 
 					for (var i = 0; i < render.next; i++) {
 						r = rendersPool[i];
@@ -589,6 +620,7 @@
 
 		function renderReset() {
 			buffer.vcount = 0;
+			buffer.cpointer = 0;
 			render.next = 0;
 			mode = MODE_NONE;
 		}
@@ -611,23 +643,25 @@
 				x3 = tx3 * gxtk.ix + y3 * gxtk.jx + gxtk.tx;
 				y3 = tx3 * gxtk.iy + y3 * gxtk.jy + gxtk.ty;
 			}
+
+			var p = buffer.vpointer;
 		
-			buffer.vdata[buffer.vpointer] = x0; 
-			buffer.vdata[buffer.vpointer + 1] = y0; 
-			buffer.vdata[buffer.vpointer + 2] = 0; 
-			buffer.vdata[buffer.vpointer + 3] = 0;
-			buffer.vdata[buffer.vpointer + 4] = x1; 
-			buffer.vdata[buffer.vpointer + 5] = y1; 
-			buffer.vdata[buffer.vpointer + 6] = 1; 
-			buffer.vdata[buffer.vpointer + 7] = 0;
-			buffer.vdata[buffer.vpointer + 8] = x2;
-			buffer.vdata[buffer.vpointer + 9] = y2; 
-			buffer.vdata[buffer.vpointer + 10] = 1; 
-			buffer.vdata[buffer.vpointer + 11] = 1;
-			buffer.vdata[buffer.vpointer + 12] = x3; 
-			buffer.vdata[buffer.vpointer + 13] = y3; 
-			buffer.vdata[buffer.vpointer + 14] = 0; 
-			buffer.vdata[buffer.vpointer + 15] = 1;
+			buffer.vdata[p] = x0; 
+			buffer.vdata[p + 1] = y0; 
+			buffer.vdata[p + 2] = 0; 
+			buffer.vdata[p + 3] = 0;
+			buffer.vdata[p + 4] = x1; 
+			buffer.vdata[p + 5] = y1; 
+			buffer.vdata[p + 6] = 1; 
+			buffer.vdata[p + 7] = 0;
+			buffer.vdata[p + 8] = x2;
+			buffer.vdata[p + 9] = y2; 
+			buffer.vdata[p + 10] = 1; 
+			buffer.vdata[p + 11] = 1;
+			buffer.vdata[p + 12] = x3; 
+			buffer.vdata[p + 13] = y3; 
+			buffer.vdata[p + 14] = 0; 
+			buffer.vdata[p + 15] = 1;			
 		}		
 
 		function Texture(image) {
