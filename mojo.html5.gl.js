@@ -442,7 +442,7 @@
 			}
 
 			renderPushRect(x, y, surface.swidth, surface.sheight);
-			render.last.texture = surface.image.texture;
+			render.last.texture = surface.image.texture.obj;
 
 			mode = MODE_TEXTURED;
 		}
@@ -464,7 +464,7 @@
 			renderPushRect2(x, y, srcw, srch, srcx / surface.image.texture.width, 
 				srcy / surface.image.texture.height, (srcx + srcw) / surface.image.texture.width, (srcy + srch) / surface.image.texture.height);
 
-			render.last.texture = surface.image.texture;
+			render.last.texture = surface.image.texture.obj;
 
 			mode = MODE_TEXTURED;
 		}
@@ -556,7 +556,7 @@
 						r = rendersPool[i];
 
 						if (cTexture !== r.texture) {
-							gl.bindTexture(gl.TEXTURE_2D, r.texture.obj);
+							gl.bindTexture(gl.TEXTURE_2D, r.texture);
 							gl.activeTexture(gl.TEXTURE0);
 							gl.uniform1i(shaderProgram.uSampler, 0);
 
