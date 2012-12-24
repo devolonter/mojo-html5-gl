@@ -169,9 +169,9 @@
 		var red = 1.0, green = 1.0, blue = 1.0;
 		var alpha = 1.0, blend = 0;		
 
-		var MODE_NONE = 0, MODE_TEXTURED = 1, MODE_CROPPED = 2;
+		var MODE_NONE = 0, MODE_TEXTURED = 1;
 		var mode = MODE_NONE;
-		var gxtk;
+		var gxtk = null;
 
 		var imageCache = [], textureCache = [];
 
@@ -186,18 +186,14 @@
 		};
 
 		var render = {
-			last: {type: -1, count: 0},
+			last: new renderOp(-1, 0, null),
 			next: 0
 		}
 
 		var rendersPool = new Array(MAX_RENDERS);
 
 		for (var i = 0; i < rendersPool.length; i++) {
-			rendersPool[i] = {
-				type: -1,
-				count: 0,
-				texture: null
-			}
+			rendersPool[i] = new renderOp(-1, 0, null);
 		}
 
 		gl.clearColor(0, 0, 0, 1);
@@ -718,7 +714,13 @@
 
 		function isPOT(value) {
 			return value > 0 && ((value - 1) & value) === 0;
-		}			
+		}
+
+		function renderOp(type, count, texture) {
+			this.type = type;
+			this.count = count;
+			this.texture = texture;
+		}
 	}	
 
 	function init(id) {
