@@ -1,10 +1,6 @@
-(function(){
+var mojoHtml5Gl = function(){
 
 	document.addEventListener("DOMContentLoaded", function() { init("GameCanvas"); }, false);
-
-	var M_PI = 3.1415926535897932384626433832795028841968;
-	var M_TWO_PI = 2.0 * M_PI;
-	var M_HALF_PI = M_PI / 2.0;
 
 	var WebGL2D = this.WebGL2D = function WebGL2D(canvas) {
 		this.canvas = canvas;
@@ -771,4 +767,6 @@
 		}
 	}
 
-})();
+};
+
+mojoHtml5Gl();
