@@ -39,7 +39,9 @@ var mojoHtml5Gl = function(undefined){
 		if (CFG_CONFIG === "debug") {
 			try {
 				console.log("WebGL enabled!");
-			} catch (e) { throw e; }
+			} catch (e) {
+				print("WebGL enabled!");
+			}
 		}
 
 		var fsSource = [];
@@ -222,33 +224,6 @@ var mojoHtml5Gl = function(undefined){
 
 		gxtkGraphics.prototype.EndRender = function(){
 			renderPull();
-		}
-
-		gxtkGraphics.prototype.LoadSurface = function( path ){
-			var app = this.app;
-			
-			function onloadfun(){
-				app.DecLoading();
-
-				if (!this.texture) {
-					var cacheIndex = imageCache.indexOf(image);
-
-					if (cacheIndex !== -1) {
-						this.texture = textureCache[cacheIndex];
-					} else {
-						this.texture = new Texture(image);
-					}
-				}				
-			}
-
-			app.IncLoading();
-
-			var image = loadImage( path, onloadfun);
-			if (image) return new gxtkSurface( image,this );
-
-			app.DecLoading();
-
-			return null;
 		}
 
 		gxtkGraphics.prototype.SetAlpha = function(a){
