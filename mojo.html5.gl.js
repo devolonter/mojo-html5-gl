@@ -36,14 +36,6 @@ var mojoHtml5Gl = function(undefined){
 	};
 
 	WebGL2D.prototype.getFragmentShaderSource = function getFragmentShaderSource(sMask) {
-		if (CFG_CONFIG === "debug") {
-			try {
-				console.log("WebGL enabled!");
-			} catch (e) {
-				print("WebGL enabled!");
-			}
-		}
-
 		var fsSource = [];
 
 		fsSource.push(
@@ -160,6 +152,10 @@ var mojoHtml5Gl = function(undefined){
 	};	
 
 	var WebGL2DAPI = this.WebGL2DAPI = function WebGL2DAPI(gl2d) {
+		if (CFG_CONFIG === "debug") {
+			print("WebGL enabled!");
+		}
+
 		var gl = gl2d.gl;
 
 		gl2d.width = -1;
@@ -698,53 +694,14 @@ var mojoHtml5Gl = function(undefined){
 			this.count = count;
 			this.texture = texture;
 		}
-	}	
+	}
 
 	function init(id) {
-		var chromeFrameEnabled = false;
-		
-		if (typeof window.ActiveXObject != "undefined") try {
-			var activeX = new ActiveXObject("ChromeTab.ChromeFrame");
-			if (activeX) {
-				try {
-					var tryChromeFrame = document.createElement("canvas");
-					var gl = tryChromeFrame.getContext("webgl") || tryChromeFrame.getContext("experimental-webgl");				
-					chromeFrameEnabled = (typeof(gl) !== 'undefined' && gl !== null);
-				} catch (e) {}
-			}
-		} catch (e) {}		
-	
-		if (navigator.userAgent.indexOf("MSIE") < 0 || chromeFrameEnabled) {
-			if (!chromeFrameEnabled && navigator.userAgent.indexOf("Opera") >= 0) try {
-				new WebGL2D(document.createElement("canvas"));
-			} catch  (e) { return; }
+		if (window.WebGLRenderingContext !== undefined) {
+			try {
+				new WebGL2D(document.getElementById(id));
+			} catch (e) { }
 
-			new WebGL2D(document.getElementById(id));
-		} else {
-			var tryIEWebGL = document.createElement("object");
-			
-			tryIEWebGL.onreadystatechange = function() {
-				try {
-					var gl = tryIEWebGL.getContext("webgl");
-					gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(canvas.width * canvas.height * 4));
-				} catch (e) { return; }
-				
-				var canvas = document.getElementById(id);
-				var IEWebGL = document.createElement("object");
-				
-				IEWebGL.onreadystatechange = function() {
-					new WebGL2D(IEWebGL);
-				}
-				
-				canvas.parentNode.replaceChild(IEWebGL, canvas);
-				
-				IEWebGL.id = id;				
-				IEWebGL.width = canvas.width;
-				IEWebGL.height = canvas.height;	
-				IEWebGL.type = "application/x-webgl";
-			};
-			
-			tryIEWebGL.type = "application/x-webgl";
 		}
 	}
 
