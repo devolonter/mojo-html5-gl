@@ -470,10 +470,10 @@ var mojoHtml5Gl = function(undefined){
 			if (!surface.image.complete) return;
 			if (mode !== MODE_TEXTURED) renderPull();
 
-			renderPushRect(x, y, srcw, srch, srcx / surface.image.texture.width,
-				srcy / surface.image.texture.height, (srcx + srcw) / surface.image.texture.width, (srcy + srch) / surface.image.texture.height);
+			renderPushRect(x, y, srcw, srch, srcx / surface.image.meta_width,
+				srcy / surface.image.meta_height, (srcx + srcw) / surface.image.meta_width, (srcy + srch) / surface.image.meta_height);
 
-			render.last.texture = surface.image.texture.obj;
+			render.last.texture = surface.image.texture;
 
 			mode = MODE_TEXTURED;
 		}
@@ -648,11 +648,7 @@ var mojoHtml5Gl = function(undefined){
 		}
 
 		WebGL2DAPI.prototype.createTexture =  function(image) {
-			var txt = {
-				obj: gl.createTexture(),
-				width: image.meta_width,
-				height: image.meta_height
-			};
+			var texture = gl.createTexture();
 
 			var mojoFilteringEnabled = (typeof(CFG_MOJO_IMAGE_FILTERING_ENABLED) === "undefined" || CFG_MOJO_IMAGE_FILTERING_ENABLED === "true" || CFG_MOJO_IMAGE_FILTERING_ENABLED === "1");
 
@@ -669,7 +665,7 @@ var mojoHtml5Gl = function(undefined){
 				image = canvas;
 			}
 
-			gl.bindTexture(gl.TEXTURE_2D, txt.obj);
+			gl.bindTexture(gl.TEXTURE_2D, texture);
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
 
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -697,7 +693,7 @@ var mojoHtml5Gl = function(undefined){
 				}
 			}
 			
-			return txt;
+			return texture;
 		}
 
 		function isPOT(value) {
