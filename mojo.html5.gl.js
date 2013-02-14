@@ -6,10 +6,8 @@ var mojoHtml5Gl = function(undefined){
 		this.api = undefined;
 		this.canvas = canvas;
 		this.gl = undefined;
-		this.fs = undefined;
-		this.vs = undefined;
-		this.shaderProgram = undefined;
-		this.shaderPool = [];
+		this.simpleShader = undefined;
+		this.textureShader = undefined;
 		this.maxTextureSize = undefined;
 
 		canvas.gl2d = this;
@@ -19,7 +17,8 @@ var mojoHtml5Gl = function(undefined){
 		if (gl === undefined || gl === null) return;
 
 		try {
-			this.initShaders();
+			this.simpleShader = this.loadShaders(false);
+			this.textureShader = this.loadShaders(true);
 		} catch (e) { throw e; }
 		
 		var api = this.api = new WebGL2DAPI(this);
@@ -87,12 +86,7 @@ var mojoHtml5Gl = function(undefined){
 		}(this.api));
 	};
 
-	var shaderMask = {
-		texture: 1,
-		crop: 2
-	};
-
-	WebGL2D.prototype.getFragmentShaderSource = function getFragmentShaderSource(sMask) {
+	WebGL2D.prototype.getFragmentShaderSource = function getFragmentShaderSource(textured) {
 		var fsSource = [];
 
 		fsSource.push(
@@ -100,7 +94,7 @@ var mojoHtml5Gl = function(undefined){
 			"varying vec4 vColor;"
 		);
 
-		if (sMask&shaderMask.texture) {
+		if (textured) {
 			fsSource.push(
 				"varying vec2 vTextureCoord;",
 				"uniform sampler2D uSampler;"
@@ -109,7 +103,7 @@ var mojoHtml5Gl = function(undefined){
 
 		fsSource.push("void main(void) {");
 
-		if (sMask&shaderMask.texture) {
+		if (textured) {
 			fsSource.push("gl_FragColor = texture2D(uSampler, vTextureCoord) * vColor;");
 		} else {
 			fsSource.push("gl_FragColor = vColor;");
@@ -120,7 +114,7 @@ var mojoHtml5Gl = function(undefined){
 		return fsSource.join("\n");
 	};
 
-	WebGL2D.prototype.getVertexShaderSource = function getVertexShaderSource(sMask) {
+	WebGL2D.prototype.getVertexShaderSource = function getVertexShaderSource(textured) {
 		var w = 2 / this.canvas.width, h = -2 / this.canvas.height;
 
 		var vsSource = [];
@@ -132,7 +126,7 @@ var mojoHtml5Gl = function(undefined){
 			"const mat4 pMatrix = mat4(" + w + ",0,0,0, 0," + h + ",0,0, 0,0,1.0,1.0, -1.0,1.0,0,0);"
 		);
 
-		if (sMask&shaderMask.texture) {
+		if (textured) {
 			vsSource.push("varying vec2 vTextureCoord;");
 		}
 
@@ -143,7 +137,7 @@ var mojoHtml5Gl = function(undefined){
 			"vColor = aVertexColor;"
 		);
 
-		if (sMask&shaderMask.texture) {
+		if (textured) {
 			vsSource.push("vTextureCoord = aVertexPosition.zw;");
 		}
 
@@ -152,60 +146,44 @@ var mojoHtml5Gl = function(undefined){
 		return vsSource.join("\n");
 	};
 
-	WebGL2D.prototype.initShaders = function initShaders(sMask) {
+	WebGL2D.prototype.loadShaders = function loadShaders(textured) {
 		var gl = this.gl;
 
-		sMask = sMask || 0;
-		var storedShader = this.shaderPool;
+		var fs = gl.createShader(gl.FRAGMENT_SHADER);
+		gl.shaderSource(fs, this.getFragmentShaderSource(textured));
+		gl.compileShader(fs);
 
-		if (!storedShader) { storedShader = this.shaderPool = []; }
-		storedShader = storedShader[sMask];
-
-		if (storedShader) {
-			gl.useProgram(storedShader);
-			this.shaderProgram = storedShader;
-			return storedShader;
-		} else {
-			var fs = this.fs = gl.createShader(gl.FRAGMENT_SHADER);
-			gl.shaderSource(this.fs, this.getFragmentShaderSource(sMask));
-			gl.compileShader(this.fs);
-
-			if (!gl.getShaderParameter(this.fs, gl.COMPILE_STATUS)) {
-				throw "fragment shader error: "+gl.getShaderInfoLog(this.fs);
-			}
-
-			var vs = this.vs = gl.createShader(gl.VERTEX_SHADER);
-			gl.shaderSource(this.vs, this.getVertexShaderSource(sMask));
-			gl.compileShader(this.vs);
-
-			if (!gl.getShaderParameter(this.vs, gl.COMPILE_STATUS)) {
-				throw "vertex shader error: "+gl.getShaderInfoLog(this.vs);
-			}
-
-			var shaderProgram = this.shaderProgram = gl.createProgram();
-			gl.attachShader(shaderProgram, fs);
-			gl.attachShader(shaderProgram, vs);
-			gl.linkProgram(shaderProgram);
-
-			if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-				throw "Could not initialise shaders.";
-			}
-
-			gl.useProgram(shaderProgram);
-
-			shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
-			gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
-
-			shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
-			gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
-
-			shaderProgram.uColor = gl.getUniformLocation(shaderProgram, 'uColor');
-			shaderProgram.uSampler = gl.getUniformLocation(shaderProgram, 'uSampler');
-			shaderProgram.uCropSource = gl.getUniformLocation(shaderProgram, 'uCropSource');
-
-			this.shaderPool[sMask] = shaderProgram;
-			return shaderProgram;
+		if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+			throw "fragment shader error: " + gl.getShaderInfoLog(fs);
 		}
+
+		var vs = gl.createShader(gl.VERTEX_SHADER);
+		gl.shaderSource(vs, this.getVertexShaderSource(textured));
+		gl.compileShader(vs);
+
+		if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
+			throw "vertex shader error: " + gl.getShaderInfoLog(vs);
+		}
+
+		var shaderProgram = this.shaderProgram = gl.createProgram();
+		gl.attachShader(shaderProgram, fs);
+		gl.attachShader(shaderProgram, vs);
+		gl.linkProgram(shaderProgram);
+
+		if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+			throw "Could not initialise shaders.";
+		}
+
+		shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+		gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+
+		shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
+		gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
+
+		shaderProgram.uColor = gl.getUniformLocation(shaderProgram, 'uColor');
+		shaderProgram.uSampler = gl.getUniformLocation(shaderProgram, 'uSampler');
+
+		return shaderProgram;
 	};	
 
 	var WebGL2DAPI = this.WebGL2DAPI = function WebGL2DAPI(gl2d) {
@@ -230,7 +208,8 @@ var mojoHtml5Gl = function(undefined){
 		var mode = MODE_NONE;
 		var gxtk = null;
 
-		var imageCache = [], textureCache = [];
+		var simpleShader = gl2d.simpleShader;
+		var textureShader = gl2d.textureShader;
 
 		var buffer = {
 			vdata: new Float32Array(MAX_VERTICES * 4),
@@ -263,8 +242,8 @@ var mojoHtml5Gl = function(undefined){
 		gxtkGraphics.prototype.BeginRender = function() {
 			if (this.gc) {
 				if (gl2d.width !== this.Width() || gl2d.height !== this.Height()) {
-					gl2d.shaderPool = [];
-					gl2d.initShaders();
+					simpleShader = gl2d.simpleShader = gl2d.loadShaders(false);
+					textureShader = gl2d.textureShader = gl2d.loadShaders(true);
 
 					gl2d.width = this.Width();
 					gl2d.height = this.Height();
@@ -284,7 +263,7 @@ var mojoHtml5Gl = function(undefined){
 		}
 
 		gxtkGraphics.prototype.SetColor = function(r, g, b){
-			red = r / 255; green = g / 255; blue = b / 255;
+			red = r / 255.0; green = g / 255.0; blue = b / 255.0;
 		}
 
 		gxtkGraphics.prototype.SetBlend = function(b){
@@ -531,22 +510,21 @@ var mojoHtml5Gl = function(undefined){
 		function renderPull() {
 			if (buffer.vcount === 0) return;
 
-			var shaderProgram = gl2d.shaderProgram;
 			var cTexture = null;
 			var index = 0;
 			var r;			
 
 			switch (mode) {
 				case MODE_NONE:
-					shaderProgram = gl2d.initShaders(0);
+					gl.useProgram(simpleShader);
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vbuffer);
 					gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);
-					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
+					gl.vertexAttribPointer(simpleShader.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, buffer.cbuffer);			
 					gl.bufferData(gl.ARRAY_BUFFER, buffer.cdata, gl.DYNAMIC_DRAW);
-					gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
+					gl.vertexAttribPointer(simpleShader.vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
 
 					for (var i = 0; i < render.next; i++) {
 						r = rendersPool[i];
@@ -556,15 +534,15 @@ var mojoHtml5Gl = function(undefined){
 					break;
 
 				case MODE_TEXTURED:
-					shaderProgram = gl2d.initShaders(shaderMask.texture);
+					gl.useProgram(textureShader);
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vbuffer);
 					gl.bufferData(gl.ARRAY_BUFFER, buffer.vdata, gl.DYNAMIC_DRAW);
-					gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
+					gl.vertexAttribPointer(textureShader.vertexPositionAttribute, 4, gl.FLOAT, false, 0, 0);
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, buffer.cbuffer);			
 					gl.bufferData(gl.ARRAY_BUFFER, buffer.cdata, gl.DYNAMIC_DRAW);
-					gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
+					gl.vertexAttribPointer(textureShader.vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
 
 					for (var i = 0; i < render.next; i++) {
 						r = rendersPool[i];
@@ -572,7 +550,7 @@ var mojoHtml5Gl = function(undefined){
 						if (cTexture !== r.texture) {
 							gl.bindTexture(gl.TEXTURE_2D, r.texture);
 							gl.activeTexture(gl.TEXTURE0);
-							gl.uniform1i(shaderProgram.uSampler, 0);
+							gl.uniform1i(textureShader.uSampler, 0);
 
 							cTexture = r.texture;
 						}
