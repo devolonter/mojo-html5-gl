@@ -3,7 +3,6 @@ var mojoHtml5Gl = function(undefined){
 	document.addEventListener("DOMContentLoaded", function() { init("GameCanvas"); }, false);
 
 	var WebGL2D = this.WebGL2D = function WebGL2D(canvas) {
-		this.api = undefined;
 		this.canvas = canvas;
 		this.gl = undefined;
 		this.fs = undefined;
@@ -22,13 +21,11 @@ var mojoHtml5Gl = function(undefined){
 			this.initShaders();
 		} catch (e) { throw e; }
 
-		this.api = new WebGL2DAPI(this);
-
-		canvas.getContext = (function(api) {
+		canvas.getContext = (function(gl2d) {
 			return function(context) {
-				return api;
+				return new WebGL2DAPI(gl2d);
 			};
-		}(this.api));
+		}(this));
 	};
 
 	var shaderMask = {
