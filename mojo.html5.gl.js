@@ -36,6 +36,12 @@ var mojoHtml5Gl = function(){
 	};
 
 	WebGL2D.prototype.getFragmentShaderSource = function getFragmentShaderSource(sMask) {
+		if (CFG_CONFIG === "debug") {
+			try {
+				console.log("WebGL enabled!");
+			} catch (e) { throw e; }
+		}
+
 		var fsSource = [];
 
 		fsSource.push(
