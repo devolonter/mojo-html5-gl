@@ -15,7 +15,7 @@ var mojoHtml5Gl = function(undefined){
 
 		var gl = this.gl = canvas.getContext("webgl", {alpha: false}) || canvas.getContext("experimental-webgl", {alpha: false});
 
-		if ((typeof(gl) === "undefined") || (gl === null)) return;
+		if (gl === undefined || gl === null) return;
 
 		try {
 			this.initShaders();
