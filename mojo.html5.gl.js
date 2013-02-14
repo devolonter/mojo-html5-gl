@@ -10,8 +10,6 @@ var mojoHtml5Gl = function(undefined){
 		this.shaderProgram = undefined;
 		this.shaderPool = [];
 		this.maxTextureSize = undefined;
-		this.width;
-		this.height;
 
 		canvas.gl2d = this;
 
