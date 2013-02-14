@@ -3,6 +3,7 @@ var mojoHtml5Gl = function(undefined){
 	document.addEventListener("DOMContentLoaded", function() { init("GameCanvas"); }, false);
 
 	var WebGL2D = this.WebGL2D = function WebGL2D(canvas) {
+		this.api = undefined;
 		this.canvas = canvas;
 		this.gl = undefined;
 		this.fs = undefined;
@@ -20,12 +21,69 @@ var mojoHtml5Gl = function(undefined){
 		try {
 			this.initShaders();
 		} catch (e) { throw e; }
+		
+		var api = this.api = new WebGL2DAPI(this);
+		
+		BBMonkeyGame.Main=function( canvas ){
+			var game=new BBMonkeyGame( canvas );
 
-		canvas.getContext = (function(gl2d) {
+			try{
+				bbInit();
+				bbMain();
+			}catch( ex ){			
+				game.Die( ex );
+				return;
+			}			
+			
+			var data = META_DATA.split('\n');
+			var path = [];
+			var assetsCache = [];
+			
+			gxtkGraphics.prototype.LoadSurface=function( path ){
+				var cache = assetsCache[path];
+				if (cache !== undefined && cache !== null) {
+					return new gxtkSurface(cache, this);
+				}
+			
+				var game=this.game;
+
+				var ty=game.GetMetaData( path,"type" );
+				if( ty.indexOf( "image/" )!=0 ) return null;
+				
+				function onloadfun(){
+					this.texture = api.createTexture(this);
+					game.DecLoading();
+				}
+				
+				game.IncLoading();
+
+				var image=new Image();
+				image.onload=onloadfun;
+				image.meta_width=parseInt( game.GetMetaData( path,"width" ) );
+				image.meta_height=parseInt( game.GetMetaData( path,"height" ) );				
+				image.src=game.PathToUrl( path );
+				
+				assetsCache[path] = image;				
+
+				return new gxtkSurface( image,this );
+			}
+			
+			if( !game.Delegate() ) return;			
+			game.Run();
+			
+			for(var i = data.length - 1; i >= 0; i--) {
+				path = data[i].match(/\[(.*)\];type=image\//i);
+				if (path !== null) {
+					bb_graphics_device.LoadSurface(bb_data_FixDataPath(path[1]));
+				}
+			}			
+		}
+
+		canvas.getContext = (function(api) {
 			return function(context) {
-				return new WebGL2DAPI(gl2d);
+				return api;
 			};
-		}(this));
+		}(this.api));
 	};
 
 	var shaderMask = {
@@ -402,18 +460,7 @@ var mojoHtml5Gl = function(undefined){
 			if (!surface.image.complete) return;
 			if (mode !== MODE_TEXTURED) renderPull();
 
-			if (!surface.image.texture) {
-				var cacheIndex = imageCache.indexOf(surface.image);
-
-				if (cacheIndex !== -1) {
-					surface.image.texture = textureCache[cacheIndex];
-				} else {
-					surface.image.texture = new Texture(surface.image);
-				}
-			}
-
 			renderPushRect(x, y, surface.swidth, surface.sheight);
-			render.last.texture = surface.image.texture.obj;
 
 			mode = MODE_TEXTURED;
 		}
@@ -421,16 +468,6 @@ var mojoHtml5Gl = function(undefined){
 		gxtkGraphics.prototype.DrawSurface2 = function(surface, x, y, srcx, srcy, srcw, srch) {
 			if (!surface.image.complete) return;
 			if (mode !== MODE_TEXTURED) renderPull();
-
-			if (!surface.image.texture) {
-				var cacheIndex = imageCache.indexOf(surface.image);
-
-				if (cacheIndex !== -1) {
-					surface.image.texture = textureCache[cacheIndex];
-				} else {
-					surface.image.texture = new Texture(surface.image);
-				}
-			}
 
 			renderPushRect2(x, y, srcw, srch, srcx / surface.image.texture.width, 
 				srcy / surface.image.texture.height, (srcx + srcw) / surface.image.texture.width, (srcy + srch) / surface.image.texture.height);
@@ -631,13 +668,12 @@ var mojoHtml5Gl = function(undefined){
 			buffer.vdata[p + 15] = v1;			
 		}
 
-		function Texture(image) {
-			this.obj = gl.createTexture();
-			this.index = textureCache.push(this);
-			imageCache.push(image);
-
-			this.width = image.meta_width;
-			this.height = image.meta_height;
+		WebGL2DAPI.prototype.createTexture =  function(image) {
+			var txt = {
+				obj: gl.createTexture(),
+				width: image.meta_width,
+				height: image.meta_height
+			};
 
 			var mojoFilteringEnabled = (typeof(CFG_MOJO_IMAGE_FILTERING_ENABLED) === "undefined" || CFG_MOJO_IMAGE_FILTERING_ENABLED === "true" || CFG_MOJO_IMAGE_FILTERING_ENABLED === "1");
 
@@ -654,7 +690,7 @@ var mojoHtml5Gl = function(undefined){
 				image = canvas;
 			}
 
-			gl.bindTexture(gl.TEXTURE_2D, this.obj);
+			gl.bindTexture(gl.TEXTURE_2D, txt.obj);
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
 
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -681,6 +717,8 @@ var mojoHtml5Gl = function(undefined){
 					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 				}
 			}
+			
+			return txt;
 		}
 
 		function isPOT(value) {
