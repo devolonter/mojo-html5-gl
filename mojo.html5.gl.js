@@ -42,7 +42,7 @@ var mojoHtml5Gl = function(undefined){
 			gxtkGraphics.prototype.LoadSurface=function( path ){
 				var cache = assetsCache[path];
 				if (cache !== undefined && cache !== null) {
-					return new gxtkSurface(cache, this);
+					return cache;
 				}
 			
 				var game=this.game;
@@ -62,10 +62,11 @@ var mojoHtml5Gl = function(undefined){
 				image.meta_width=parseInt( game.GetMetaData( path,"width" ) );
 				image.meta_height=parseInt( game.GetMetaData( path,"height" ) );				
 				image.src=game.PathToUrl( path );
-				
-				assetsCache[path] = image;				
 
-				return new gxtkSurface( image,this );
+				var surface = new gxtkSurface( image,this );
+				assetsCache[path] = surface;
+
+				return surface;
 			}
 			
 			if( !game.Delegate() ) return;			
