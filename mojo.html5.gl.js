@@ -327,7 +327,10 @@ var mojoHtml5Gl = function(undefined){
 		}
 
 		gxtkGraphics.prototype.DrawPoint = function(x, y){
-			if (mode !== MODE_NONE) renderPull();
+			if (mode !== MODE_NONE) {
+				renderPull();
+				mode = MODE_NONE;
+			}
 
 			renderPush(gl.POINTS, 1);
 
@@ -341,20 +344,22 @@ var mojoHtml5Gl = function(undefined){
 			
 			buffer.vdata[p] = x;
 			buffer.vdata[p + 1] = y;
-
-			mode = MODE_NONE;
 		}		
 
 		gxtkGraphics.prototype.DrawRect = function(x, y, w, h){
-			if (mode !== MODE_NONE) renderPull();
+			if (mode !== MODE_NONE) {
+				renderPull();
+				mode = MODE_NONE;
+			}
 
 			renderPushRect(x, y, w, h);
-
-			mode = MODE_NONE;
 		}
 
 		gxtkGraphics.prototype.DrawLine = function(x1, y1, x2, y2) {
-			if (mode !== MODE_NONE) renderPull();
+			if (mode !== MODE_NONE) {
+				renderPull();
+				mode = MODE_NONE;
+			}
 
 			renderPush(gl.LINES, 2);
 
@@ -376,12 +381,13 @@ var mojoHtml5Gl = function(undefined){
 			buffer.vdata[p + 5] = y2; 
 			buffer.vdata[p + 6] = 0; 
 			buffer.vdata[p + 7] = 0;
-
-			mode = MODE_NONE;
 		}
 
 		gxtkGraphics.prototype.DrawOval = function(x, y, w, h) {
-			if (mode !== MODE_NONE) renderPull();
+			if (mode !== MODE_NONE) {
+				renderPull();
+				mode = MODE_NONE;
+			}
 
 			var xr = w / 2.0;
 			var yr = h / 2.0;
@@ -428,12 +434,13 @@ var mojoHtml5Gl = function(undefined){
 				buffer.vdata[p + 1] = y0;
 				p += 4;
 			}
-
-			mode = MODE_NONE;
 		}	
 
 		gxtkGraphics.prototype.DrawPoly = function(verts) {
-			if (mode !== MODE_NONE) renderPull();
+			if (mode !== MODE_NONE) {
+				renderPull();
+				mode = MODE_NONE;
+			}
 
 			if (verts.length < 6 || verts.length > MAX_VERTICES * 2) return;
 	
@@ -453,29 +460,29 @@ var mojoHtml5Gl = function(undefined){
 					p += 4;
 				}
 			}
-
-			mode = MODE_NONE;
 		}
 
 		gxtkGraphics.prototype.DrawSurface = function(surface, x, y) {
 			if (!surface.image.complete) return;
-			if (mode !== MODE_TEXTURED) renderPull();
+			if (mode !== MODE_TEXTURED) {
+				renderPull();
+				mode = MODE_TEXTURED;
+			}
 
 			renderPushRect(x, y, surface.swidth, surface.sheight);
-
-			mode = MODE_TEXTURED;
 		}
 
 		gxtkGraphics.prototype.DrawSurface2 = function(surface, x, y, srcx, srcy, srcw, srch) {
 			if (!surface.image.complete) return;
-			if (mode !== MODE_TEXTURED) renderPull();
+			if (mode !== MODE_TEXTURED) {
+				renderPull();
+				mode = MODE_TEXTURED;
+			}
 
 			renderPushRect(x, y, srcw, srch, srcx / surface.image.meta_width,
 				srcy / surface.image.meta_height, (srcx + srcw) / surface.image.meta_width, (srcy + srch) / surface.image.meta_height);
 
 			render.last.texture = surface.image.texture;
-
-			mode = MODE_TEXTURED;
 		}
 
 		gxtkGraphics.prototype.ReadPixels = function(pixels, x, y, width, height, offset, pitch ) {
@@ -543,9 +550,7 @@ var mojoHtml5Gl = function(undefined){
 
 					for (var i = 0; i < render.next; i++) {
 						r = rendersPool[i];
-
 						gl.drawArrays(r.type, index, r.count);
-
 						index += r.count;
 					}
 					break;
