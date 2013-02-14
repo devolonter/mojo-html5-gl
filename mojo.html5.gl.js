@@ -470,7 +470,7 @@ var mojoHtml5Gl = function(undefined){
 			if (!surface.image.complete) return;
 			if (mode !== MODE_TEXTURED) renderPull();
 
-			renderPushRect2(x, y, srcw, srch, srcx / surface.image.texture.width, 
+			renderPushRect(x, y, srcw, srch, srcx / surface.image.texture.width,
 				srcy / surface.image.texture.height, (srcx + srcw) / surface.image.texture.width, (srcy + srch) / surface.image.texture.height);
 
 			render.last.texture = surface.image.texture.obj;
@@ -588,14 +588,14 @@ var mojoHtml5Gl = function(undefined){
 			mode = MODE_NONE;
 		}
 
-		function renderPushRect(x, y, w, h) {
+		function renderPushRect(x, y, w, h, u0, v0, u1, v1) {
 			renderPush(gl.TRIANGLE_FAN, 4);
 
 			var x0 = x, x1 = x + w, x2 = x + w, x3 = x;
-			var y0 = y, y1 = y, y2 = y+h, y3 = y + h;
+			var y0 = y, y1 = y, y2 = y + h, y3 = y + h;
 			
 			if (gxtk.tformed) {
-				var tx0 = x0,tx1 = x1,tx2 = x2,tx3 = x3;
+				var tx0 = x0, tx1 = x1, tx2 = x2, tx3 = x3;
 				
 				x0 = tx0 * gxtk.ix + y0 * gxtk.jx + gxtk.tx;
 				y0 = tx0 * gxtk.iy + y0 * gxtk.jy + gxtk.ty;
@@ -608,65 +608,43 @@ var mojoHtml5Gl = function(undefined){
 			}
 
 			var p = buffer.vpointer;
-		
-			buffer.vdata[p] = x0; 
-			buffer.vdata[p + 1] = y0; 
-			buffer.vdata[p + 2] = 0; 
-			buffer.vdata[p + 3] = 0;
-			buffer.vdata[p + 4] = x1; 
-			buffer.vdata[p + 5] = y1; 
-			buffer.vdata[p + 6] = 1; 
-			buffer.vdata[p + 7] = 0;
-			buffer.vdata[p + 8] = x2;
-			buffer.vdata[p + 9] = y2; 
-			buffer.vdata[p + 10] = 1; 
-			buffer.vdata[p + 11] = 1;
-			buffer.vdata[p + 12] = x3; 
-			buffer.vdata[p + 13] = y3; 
-			buffer.vdata[p + 14] = 0; 
-			buffer.vdata[p + 15] = 1;			
-		}
 
-		function renderPushRect2(x, y, w, h, u0, v0, u1, v1) {
-			renderPush(gl.TRIANGLE_FAN, 4);
-
-			var x0 = x, x1 = x + w, x2 = x + w, x3 = x;
-			var y0 = y, y1 = y, y2 = y+h, y3 = y + h;
-			
-			if (gxtk.tformed) {
-				var tx0 = x0,tx1 = x1,tx2 = x2,tx3 = x3;
-				
-				x0 = tx0 * gxtk.ix + y0 * gxtk.jx + gxtk.tx;
-				y0 = tx0 * gxtk.iy + y0 * gxtk.jy + gxtk.ty;
-				x1 = tx1 * gxtk.ix + y1 * gxtk.jx + gxtk.tx;
-				y1 = tx1 * gxtk.iy + y1 * gxtk.jy + gxtk.ty;
-				x2 = tx2 * gxtk.ix + y2 * gxtk.jx + gxtk.tx;
-				y2 = tx2 * gxtk.iy + y2 * gxtk.jy + gxtk.ty;
-				x3 = tx3 * gxtk.ix + y3 * gxtk.jx + gxtk.tx;
-				y3 = tx3 * gxtk.iy + y3 * gxtk.jy + gxtk.ty;
+			if (u0 === undefined) {
+				buffer.vdata[p] = x0;
+				buffer.vdata[p + 1] = y0;
+				buffer.vdata[p + 2] = 0;
+				buffer.vdata[p + 3] = 0;
+				buffer.vdata[p + 4] = x1;
+				buffer.vdata[p + 5] = y1;
+				buffer.vdata[p + 6] = 1;
+				buffer.vdata[p + 7] = 0;
+				buffer.vdata[p + 8] = x2;
+				buffer.vdata[p + 9] = y2;
+				buffer.vdata[p + 10] = 1;
+				buffer.vdata[p + 11] = 1;
+				buffer.vdata[p + 12] = x3;
+				buffer.vdata[p + 13] = y3;
+				buffer.vdata[p + 14] = 0;
+				buffer.vdata[p + 15] = 1;
+			} else {
+				buffer.vdata[p] = x0;
+				buffer.vdata[p + 1] = y0;
+				buffer.vdata[p + 2] = u0;
+				buffer.vdata[p + 3] = v0;
+				buffer.vdata[p + 4] = x1;
+				buffer.vdata[p + 5] = y1;
+				buffer.vdata[p + 6] = u1;
+				buffer.vdata[p + 7] = v0;
+				buffer.vdata[p + 8] = x2;
+				buffer.vdata[p + 9] = y2;
+				buffer.vdata[p + 10] = u1;
+				buffer.vdata[p + 11] = v1;
+				buffer.vdata[p + 12] = x3;
+				buffer.vdata[p + 13] = y3;
+				buffer.vdata[p + 14] = u0;
+				buffer.vdata[p + 15] = v1;
 			}
 
-			var p = buffer.vpointer;
-		
-			buffer.vdata[p] = x0; 
-			buffer.vdata[p + 1] = y0; 
-			buffer.vdata[p + 2] = u0; 
-			buffer.vdata[p + 3] = v0;
-
-			buffer.vdata[p + 4] = x1; 
-			buffer.vdata[p + 5] = y1; 
-			buffer.vdata[p + 6] = u1;
-			buffer.vdata[p + 7] = v0;
-
-			buffer.vdata[p + 8] = x2;
-			buffer.vdata[p + 9] = y2; 
-			buffer.vdata[p + 10] = u1; 
-			buffer.vdata[p + 11] = v1;
-
-			buffer.vdata[p + 12] = x3; 
-			buffer.vdata[p + 13] = y3; 
-			buffer.vdata[p + 14] = u0; 
-			buffer.vdata[p + 15] = v1;			
 		}
 
 		WebGL2DAPI.prototype.createTexture =  function(image) {
