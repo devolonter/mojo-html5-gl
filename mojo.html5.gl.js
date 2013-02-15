@@ -180,7 +180,7 @@ var mojoHtml5Gl = function(undefined){
 		gl2d.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
 		if (!isPOT(gl2d.maxTextureSize)) gl2d.maxTextureSize += 1;
 
-		var MAX_VERTICES = parseInt(65536 / 20);
+		var MAX_VERTICES = 2048;
 		var MAX_RENDERS = parseInt(MAX_VERTICES / 2);
 
 		var red = 1.0, green = 1.0, blue = 1.0;
