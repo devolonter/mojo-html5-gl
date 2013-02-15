@@ -8,6 +8,7 @@ var mojoHtml5Gl = function(undefined){
 		this.gl = undefined;
 		this.simpleShader = undefined;
 		this.textureShader = undefined;
+		this.assetsCache = [];
 		this.maxTextureSize = undefined;
 
 		canvas.gl2d = this;
@@ -23,60 +24,41 @@ var mojoHtml5Gl = function(undefined){
 		
 		var api = this.api = new WebGL2DAPI(this);
 		
-		BBMonkeyGame.Main=function( canvas ){
-			var game=new BBMonkeyGame( canvas );
+		BBMonkeyGame.Main = function( canvas ){
+			var game = new BBMonkeyGame( canvas );
 
 			try{
 				bbInit();
 				bbMain();
-			}catch( ex ){			
-				game.Die( ex );
+			}catch(ex){
+				game.Die(ex);
 				return;
 			}			
-			
+
+			function loadComplete(){
+				this.texture = api.createTexture(this);
+				game.DecLoading();
+				if (game.GetLoading() === 0) game.Run();
+			}
+
 			var data = META_DATA.split('\n');
 			var path = [];
-			var assetsCache = [];
-			
-			gxtkGraphics.prototype.LoadSurface=function( path ){
-				var cache = assetsCache[path];
-				if (cache !== undefined && cache !== null) {
-					return cache;
-				}
-			
-				var game=this.game;
 
-				var ty=game.GetMetaData( path,"type" );
-				if( ty.indexOf( "image/" )!=0 ) return null;
-				
-				function onloadfun(){
-					this.texture = api.createTexture(this);
-					game.DecLoading();
-				}
-				
-				game.IncLoading();
-
-				var image=new Image();
-				image.onload=onloadfun;
-				image.meta_width=parseInt( game.GetMetaData( path,"width" ) );
-				image.meta_height=parseInt( game.GetMetaData( path,"height" ) );				
-				image.src=game.PathToUrl( path );
-
-				var surface = new gxtkSurface( image,this );
-				assetsCache[path] = surface;
-
-				return surface;
-			}
-			
-			if( !game.Delegate() ) return;			
-			game.Run();
-			
 			for(var i = data.length - 1; i >= 0; i--) {
 				path = data[i].match(/\[(.*)\];type=image\//i);
 				if (path !== null) {
-					bb_graphics_device.LoadSurface(bb_data_FixDataPath(path[1]));
+					monkeyPath = bb_data_FixDataPath(path[1]);
+					game.IncLoading();
+
+					var image = new Image();
+					image.onload = loadComplete;
+					image.meta_width = parseInt(game.GetMetaData(monkeyPath, "width"));
+					image.meta_height = parseInt(game.GetMetaData(monkeyPath, "height"));
+					image.src = game.PathToUrl(monkeyPath);
+
+					canvas.gl2d.assetsCache[monkeyPath] = new gxtkSurface(image,this);
 				}
-			}			
+			}
 		}
 
 		canvas.getContext = (function(api) {
@@ -239,6 +221,10 @@ var mojoHtml5Gl = function(undefined){
 		gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);		
 
 		//mojo runtime patching
+		gxtkGraphics.prototype.LoadSurface = function(path){
+			return gl2d.assetsCache[path];
+		}
+
 		gxtkGraphics.prototype.BeginRender = function() {
 			if (this.gc) {
 				if (gl2d.width !== this.Width() || gl2d.height !== this.Height()) {
