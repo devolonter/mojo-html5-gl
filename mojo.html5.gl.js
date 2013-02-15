@@ -486,7 +486,7 @@ var mojoHtml5Gl = function(undefined){
 		gxtkGraphics.prototype.WritePixels2 = function(surface, pixels, x, y, width, height, offset, pitch){
 			var imgData = surface.gc.createImageData(width, height);
 
-			var p = imgData.data, i=0, j=offset,px,py,argb;
+			var p = imgData.data, i = 0, j = offset,px,py,argb;
 
 			for(py = 0; py < height; ++py){
 				for(px = 0; px < width; ++px){
@@ -502,6 +502,8 @@ var mojoHtml5Gl = function(undefined){
 			}
 
 			surface.gc.putImageData(imgData, x, y);
+
+			gl.deleteTexture(surface.image.texture);
 			surface.image.texture = gl2d.api.createTexture(surface.image);
 		}
 
