@@ -595,7 +595,6 @@ var mojoHtml5Gl = function(undefined){
 		function renderReset() {
 			buffer.vcount = 0;
 			render.next = 0;
-			mode = MODE_NONE;
 		}
 
 		function renderPushRect(x, y, w, h, u0, v0, u1, v1) {
