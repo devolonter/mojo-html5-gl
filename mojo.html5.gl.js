@@ -258,6 +258,22 @@ var mojoHtml5Gl = function(undefined){
 			renderPull();
 		}
 
+		gxtkGraphics.prototype.CreateSurface=function( width,height ){
+			var canvas = document.createElement("canvas");
+
+			canvas.width = width;
+			canvas.height = height;
+			canvas.meta_width = width;
+			canvas.meta_height = height;
+			canvas.texture = gl2d.api.createTexture(canvas);
+			canvas.complete = true;
+
+			var surface = new gxtkSurface(canvas, this);
+			surface.gc = canvas.getContext("2d");
+
+			return surface;
+		}
+
 		gxtkGraphics.prototype.SetAlpha = function(a){
 			alpha = a;
 		}
@@ -479,6 +495,28 @@ var mojoHtml5Gl = function(undefined){
 					i+=4;
 				}
 			}
+		}
+
+		gxtkGraphics.prototype.WritePixels2 = function(surface, pixels, x, y, width, height, offset, pitch){
+			var imgData = surface.gc.createImageData(width, height);
+
+			var p = imgData.data, i=0, j=offset,px,py,argb;
+
+			for(py = 0; py < height; ++py){
+				for(px = 0; px < width; ++px){
+					argb = pixels[j++];
+					p[i] = (argb>>16) & 0xff;
+					p[i + 1] = (argb>>8) & 0xff;
+					p[i + 2] = argb & 0xff;
+					p[i + 3] = (argb>>24) & 0xff;
+					i += 4;
+				}
+
+				j += pitch - width;
+			}
+
+			surface.gc.putImageData(imgData, x, y);
+			surface.image.texture = gl2d.api.createTexture(surface.image);
 		}
 
 		function renderPush(type, count) {
