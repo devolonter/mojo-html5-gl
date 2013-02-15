@@ -449,6 +449,7 @@ var mojoHtml5Gl = function(undefined){
 			}
 
 			renderPushRect(x, y, surface.swidth, surface.sheight);
+			render.last.texture = surface.image.texture;
 		}
 
 		gxtkGraphics.prototype.DrawSurface2 = function(surface, x, y, srcx, srcy, srcw, srch) {
