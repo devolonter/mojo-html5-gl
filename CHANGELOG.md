@@ -2,7 +2,7 @@ Changelog
 =
 ______________________________________________________
 ### v1.30
-* Important! This version is only compatible with V67
+* *Important!* This version is only compatible with V67
 * Now script preloads all textures. Therefore, there might be a short pause before the game start
 * Added full support of CreateImage and WritePixels
 * In debug mode to the console was added notification. Now, if the script was connected successfully, it writes to the console "WebGL enabled"
@@ -16,7 +16,7 @@ ______________________________________________________
 ###v1.21
 * Added possibility to use by 3rd party modules
 
-###v1.2
+###v1.20
 * Added color buffer. 2x performance improvement for SetColor and SetAlpha
 * Performance improvement  for DrawImageRect function
 
