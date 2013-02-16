@@ -30,4 +30,4 @@ ______________________________________________________
 Demo
 =
 ______________________________________________________
-* [Firepaint](http://lab.devolonter.ru/libs/mojo-html5-gl/)
+* [BunnyMark](http://lab.devolonter.ru/libs/mojo-html5-gl/)
