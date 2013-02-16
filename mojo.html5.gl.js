@@ -170,7 +170,7 @@ var mojoHtml5Gl = function(undefined){
 
 	var WebGL2DAPI = this.WebGL2DAPI = function WebGL2DAPI(gl2d) {
 		if (CFG_CONFIG === "debug") {
-			print("WebGL enabled!");
+			print("WebGL enabled");
 		}
 
 		var gl = gl2d.gl;
