@@ -3,7 +3,7 @@ var mojoHtml5Gl = function(undefined){
 
 	document.addEventListener("DOMContentLoaded", function() { init("GameCanvas"); }, false);
 
-	var WebGL2D = this.WebGL2D = function WebGL2D(canvas) {
+	var WebGL2D = function WebGL2D(canvas) {
 		this.api = undefined;
 		this.canvas = canvas;
 		this.gl = undefined;
@@ -44,6 +44,7 @@ var mojoHtml5Gl = function(undefined){
 
 			var data = META_DATA.split('\n');
 			var path = [];
+			var monkeyPath = '';
 
 			for(var i = data.length - 1; i >= 0; i--) {
 				path = data[i].match(/\[(.*)\];type=image\//i);
@@ -169,7 +170,7 @@ var mojoHtml5Gl = function(undefined){
 		return shaderProgram;
 	};	
 
-	var WebGL2DAPI = this.WebGL2DAPI = function WebGL2DAPI(gl2d) {
+	var WebGL2DAPI = function WebGL2DAPI(gl2d) {
 		if (CFG_CONFIG === "debug") {
 			print("WebGL enabled");
 		}
