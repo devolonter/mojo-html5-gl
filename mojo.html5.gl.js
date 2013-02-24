@@ -230,18 +230,18 @@ var mojoHtml5Gl = function(undefined){
 		}
 
 		gxtkGraphics.prototype.BeginRender = function() {
-			if (this.gc) {
-				if (gl2d.width !== gl2d.canvas.width || gl2d.height !== gl2d.canvas.height) {
-					simpleShader = gl2d.simpleShader = gl2d.loadShaders(false);
-					textureShader = gl2d.textureShader = gl2d.loadShaders(true);
+			if (!this.gc) return 0;
 
-					this.width = gl2d.width = gl2d.canvas.width;
-					this.height = gl2d.height = gl2d.canvas.height;
-					gl.viewport(0, 0, this.width, this.height);
-				}
-			
-				gxtk = this;	
+			if (gl2d.width !== gl2d.canvas.width || gl2d.height !== gl2d.canvas.height) {
+				simpleShader = gl2d.simpleShader = gl2d.loadShaders(false);
+				textureShader = gl2d.textureShader = gl2d.loadShaders(true);
+
+				this.width = gl2d.width = gl2d.canvas.width;
+				this.height = gl2d.height = gl2d.canvas.height;
+				gl.viewport(0, 0, this.width, this.height);
 			}
+
+			gxtk = this;
 		}
 
 		gxtkGraphics.prototype.EndRender = function(){
@@ -290,9 +290,9 @@ var mojoHtml5Gl = function(undefined){
 		gxtkGraphics.prototype.SetScissor = function(x,y,w,h) {
 			renderPull();
 
-			if (x !== 0 || y !== 0 || w !== this.Width() || h !== this.Height()) {
+			if (x !== 0 || y !== 0 || w !== this.width || h !== this.height) {
 				gl.enable(gl.SCISSOR_TEST);
-				y = this.Height() - y - h;
+				y = this.height - y - h;
 				gl.scissor(x, y, w, h);
 			} else {
 				gl.disable(gl.SCISSOR_TEST);
@@ -475,7 +475,7 @@ var mojoHtml5Gl = function(undefined){
 			renderPull();
 
 			var data = new Uint8Array(width * height * 4);
-			gl.readPixels(x, this.Height() - y - height, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
+			gl.readPixels(x, this.height - y - height, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
 
 			var i = 0;
 			for(var py = height-1; py >= 0; --py) {
