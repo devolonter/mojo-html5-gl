@@ -1,4 +1,5 @@
 var mojoHtml5Gl = function(undefined){
+	'use strict';
 
 	document.addEventListener("DOMContentLoaded", function() { init("GameCanvas"); }, false);
 
