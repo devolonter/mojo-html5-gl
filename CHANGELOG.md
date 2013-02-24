@@ -1,6 +1,10 @@
 Changelog
 =
 ______________________________________________________
+### v1.31
+* Work with resizable canvas was fixed
+* Small improvements
+
 ### v1.30
 * **Important!** This version is only compatible with V67
 * Now script preloads all textures. Therefore, there might be a short pause before the game start
