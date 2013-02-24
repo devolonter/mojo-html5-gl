@@ -7,6 +7,8 @@ var mojoHtml5Gl = function(undefined){
 		this.api = undefined;
 		this.canvas = canvas;
 		this.gl = undefined;
+		this.width = canvas.width;
+		this.height = canvas.height;
 		this.simpleShader = undefined;
 		this.textureShader = undefined;
 		this.assetsCache = [];
@@ -229,13 +231,13 @@ var mojoHtml5Gl = function(undefined){
 
 		gxtkGraphics.prototype.BeginRender = function() {
 			if (this.gc) {
-				if (gl2d.width !== this.Width() || gl2d.height !== this.Height()) {
+				if (gl2d.width !== gl2d.canvas.width || gl2d.height !== gl2d.canvas.height) {
 					simpleShader = gl2d.simpleShader = gl2d.loadShaders(false);
 					textureShader = gl2d.textureShader = gl2d.loadShaders(true);
 
-					gl2d.width = this.Width();
-					gl2d.height = this.Height();
-					gl.viewport(0, 0, gl2d.width, gl2d.height);
+					this.width = gl2d.width = gl2d.canvas.width;
+					this.height = gl2d.height = gl2d.canvas.height;
+					gl.viewport(0, 0, this.width, this.height);
 				}
 			
 				gxtk = this;	
