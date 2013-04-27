@@ -56,8 +56,8 @@ var mojoHtml5Gl = function(undefined){
 
 					var image = new Image();
 					image.onload = loadComplete;
-					image.meta_width = parseInt(game.GetMetaData(monkeyPath, "width"));
-					image.meta_height = parseInt(game.GetMetaData(monkeyPath, "height"));
+					image.meta_width = (game.GetMetaData(monkeyPath, "width"))|0;
+					image.meta_height = (game.GetMetaData(monkeyPath, "height"))|0;
 					image.src = game.PathToUrl(monkeyPath);
 
 					canvas.gl2d.assetsCache[monkeyPath] = new gxtkSurface(image,this);
@@ -185,7 +185,7 @@ var mojoHtml5Gl = function(undefined){
 		if (!isPOT(gl2d.maxTextureSize)) gl2d.maxTextureSize += 1;
 
 		var MAX_VERTICES = 2048;
-		var MAX_RENDERS = parseInt(MAX_VERTICES / 2);
+		var MAX_RENDERS = (MAX_VERTICES / 2)|0;
 
 		var red = 1.0, green = 1.0, blue = 1.0;
 		var alpha = 1.0, blend = 0;		
@@ -383,9 +383,9 @@ var mojoHtml5Gl = function(undefined){
 				var xx = xr * this.ix, xy = xr * this.iy, xd = parseFloat(Math.sqrt(xx * xx + xy * xy));
 				var yx = yr * this.jx, yy = yr * this.jy, yd = parseFloat(Math.sqrt(yx * yx + yy * yy));
 
-				segs= parseInt(xd + yd);
+				segs= (xd + yd)|0;
 			}else{
-				segs = parseInt(Math.abs(xr) + Math.abs(yr));
+				segs = (Math.abs(xr) + Math.abs(yr))|0;
 			}
 			
 

@@ -2,3 +2,4 @@
 *.data
 *.monkey
 *.idea
+*.log
