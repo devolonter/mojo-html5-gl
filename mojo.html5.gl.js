@@ -380,8 +380,8 @@ var mojoHtml5Gl = function(undefined){
 			var segs;
 
 			if (this.tformed) {
-				var xx = xr * this.ix, xy = xr * this.iy, xd = parseFloat(Math.sqrt(xx * xx + xy * xy));
-				var yx = yr * this.jx, yy = yr * this.jy, yd = parseFloat(Math.sqrt(yx * yx + yy * yy));
+				var xx = xr * this.ix, xy = xr * this.iy, xd = Math.sqrt(xx * xx + xy * xy);
+				var yx = yr * this.jx, yy = yr * this.jy, yd = Math.sqrt(yx * yx + yy * yy);
 
 				segs= (xd + yd)|0;
 			}else{
