@@ -1,6 +1,12 @@
 Changelog
 =
 ______________________________________________________
+### v1.32
+* Improved texture loading
+* Added support of Discard method
+* Fixed possible bugs which caused crash of the application with an error: "Cannot call method 'IncLoading' of undefined"
+* Small improvements
+
 ### v1.31
 * Work with resizable canvas was fixed
 * Small improvements
