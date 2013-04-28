@@ -219,7 +219,7 @@ var mojoHtml5Gl = function(undefined){
 			canvas.height = height;
 			canvas.meta_width = width;
 			canvas.meta_height = height;
-			canvas.texture = bindTexture(canvas);
+			bindTexture(canvas);
 			canvas.complete = true;
 
 			var surface = new gxtkSurface(canvas, this);
@@ -493,6 +493,7 @@ var mojoHtml5Gl = function(undefined){
 			surface.gc.putImageData(imgData, x, y);
 
 			gl.deleteTexture(surface.image.texture);
+			surface.image.texture = null;
 			bindTexture(surface.image);
 		}
 
