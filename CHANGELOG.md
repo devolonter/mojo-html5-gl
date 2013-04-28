@@ -1,6 +1,9 @@
 Changelog
 =
 ______________________________________________________
+### v1.32b
+* Fixed WritePixels
+
 ### v1.32
 * Improved texture loading
 * Added support of Discard method

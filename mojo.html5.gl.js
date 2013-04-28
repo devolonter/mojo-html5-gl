@@ -199,7 +199,7 @@ var mojoHtml5Gl = function(undefined){
 				game.DecLoading();
 			};
 			image.meta_width = parseInt(game.GetMetaData(path, "width"));
-			image.meta_height = parseInt( game.GetMetaData(path, "height"));
+			image.meta_height = parseInt(game.GetMetaData(path, "height"));
 			image.src = game.PathToUrl(path);
 
 			return new gxtkSurface(image, this);
@@ -230,6 +230,7 @@ var mojoHtml5Gl = function(undefined){
 
 		gxtkGraphics.prototype.BeginRender = function() {
 			if (!this.gc) return 0;
+			if (this.game.GetLoading()) return 2;
 
 			if (gl2d.width !== gl2d.canvas.width || gl2d.height !== gl2d.canvas.height) {
 				simpleShader = gl2d.simpleShader = gl2d.loadShaders(false);
@@ -241,6 +242,7 @@ var mojoHtml5Gl = function(undefined){
 			}
 
 			gxtk = this;
+			return 1;
 		}
 
 		gxtkGraphics.prototype.EndRender = function(){
@@ -491,7 +493,7 @@ var mojoHtml5Gl = function(undefined){
 			surface.gc.putImageData(imgData, x, y);
 
 			gl.deleteTexture(surface.image.texture);
-			surface.image.texture = bindTexture(surface.image);
+			bindTexture(surface.image);
 		}
 
 		function renderPush(type, count) {
