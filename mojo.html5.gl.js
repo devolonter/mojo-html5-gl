@@ -25,12 +25,17 @@ var mojoHtml5Gl = function(undefined){
 		} catch (e) { throw e; }
 		
 		this.api = new WebGL2DAPI(this);
+		canvas.getContext = this.api;
 
-		canvas.getContext = (function(api) {
+		canvas.getContext = (function(api, gl) {
 			return function(context) {
+				if( context === "webgl" || context === "experimental-webgl"){
+					return gl;
+				}
+				
 				return api;
 			};
-		}(this.api));
+		}(this.api, this.gl));
 	};
 
 	WebGL2D.prototype.getFragmentShaderSource = function getFragmentShaderSource(textured) {
