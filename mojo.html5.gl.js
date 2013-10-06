@@ -235,6 +235,8 @@ var mojoHtml5Gl = function(undefined){
 
 		gxtkGraphics.prototype.BeginRender = function() {
 			if (!this.gc) return 0;
+
+			gxtk = this;
 			if (this.game.GetLoading()) return 2;
 
 			if (gl2d.width !== gl2d.canvas.width || gl2d.height !== gl2d.canvas.height) {
@@ -246,7 +248,6 @@ var mojoHtml5Gl = function(undefined){
 				gl.viewport(0, 0, this.width, this.height);
 			}
 
-			gxtk = this;
 			return 1;
 		}
 
