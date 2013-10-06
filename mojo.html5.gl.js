@@ -25,12 +25,17 @@ var mojoHtml5Gl = function(undefined){
 		} catch (e) { throw e; }
 		
 		this.api = new WebGL2DAPI(this);
+		canvas.getContext = this.api;
 
-		canvas.getContext = (function(api) {
+		canvas.getContext = (function(api, gl) {
 			return function(context) {
+				if( context === "webgl" || context === "experimental-webgl"){
+					return gl;
+				}
+				
 				return api;
 			};
-		}(this.api));
+		}(this.api, this.gl));
 	};
 
 	WebGL2D.prototype.getFragmentShaderSource = function getFragmentShaderSource(textured) {
@@ -205,6 +210,30 @@ var mojoHtml5Gl = function(undefined){
 			return new gxtkSurface(image, this);
 		}
 
+		BBAsyncImageLoaderThread.prototype.Start = function(){
+			var thread = this;
+			var image = new Image();
+			image.crossOrigin = '';
+
+			image.onload = function(e) {
+				image.meta_width = image.width;
+				image.meta_height = image.height;
+				thread._surface = new gxtkSurface(image, thread._device);
+				bindTexture(this);
+				thread.running = false;
+			}
+
+			image.onerror = function(e) {
+				thread._surface = null;
+				thread.running = false;
+			}
+
+			thread.running = true;
+
+			image.src = BBGame.Game().PathToUrl(thread._path);
+		}
+
+
 		gxtkSurface.prototype.Discard = function(){
 			if (this.image){
 				gl.deleteTexture(this.image.texture);
@@ -230,6 +259,8 @@ var mojoHtml5Gl = function(undefined){
 
 		gxtkGraphics.prototype.BeginRender = function() {
 			if (!this.gc) return 0;
+
+			gxtk = this;
 			if (this.game.GetLoading()) return 2;
 
 			if (gl2d.width !== gl2d.canvas.width || gl2d.height !== gl2d.canvas.height) {
@@ -241,7 +272,6 @@ var mojoHtml5Gl = function(undefined){
 				gl.viewport(0, 0, this.width, this.height);
 			}
 
-			gxtk = this;
 			return 1;
 		}
 
@@ -430,6 +460,40 @@ var mojoHtml5Gl = function(undefined){
 					p += 4;
 				}
 			}
+		}
+
+		gxtkGraphics.prototype.DrawPoly2 = function(verts, surface, srcx, srcy) {
+			if (!surface.image.complete) return;
+			if (mode !== MODE_TEXTURED) {
+				renderPull();
+				mode = MODE_TEXTURED;
+			}
+
+			var vertexCount = verts.length / 4;
+			if (vertexCount < 3 || vertexCount > MAX_VERTICES ) return;
+
+			renderPush(gl.TRIANGLE_FAN, vertexCount);
+			var p = buffer.vpointer;
+
+			for (var i = 0; i < vertexCount; i++) {
+				var index = i*4;
+				var px = verts[index];
+				var py = verts[index+1];
+
+				if (this.tformed) {
+					var ppx = px;
+					px = ppx * this.ix + py * this.jx + this.tx;
+					py = ppx * this.iy + py * this.jy + this.ty;
+				}
+
+				buffer.vdata[p] = px;
+				buffer.vdata[p+1] = py;
+				buffer.vdata[p+2] = (srcx + verts[index+2]) / surface.image.meta_width;
+				buffer.vdata[p+3] = (srcy + verts[index+3]) / surface.image.meta_height;
+				p += 4;
+			}
+
+			render.last.texture = surface.image.texture;
 		}
 
 		gxtkGraphics.prototype.DrawSurface = function(surface, x, y) {

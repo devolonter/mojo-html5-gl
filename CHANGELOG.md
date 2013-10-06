@@ -1,6 +1,12 @@
 Changelog
 =
-______________________________________________________
+
+### v1.35
+* Added textured DrawPoly support
+* Added support of async image loader
+* Fixed value returned by getContext function for webgl and expreimental-webgl contexts
+* Fixed issues with App.OnLoading event
+
 ### v1.32b
 * Fixed WritePixels
 
