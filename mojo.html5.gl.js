@@ -432,6 +432,40 @@ var mojoHtml5Gl = function(undefined){
 			}
 		}
 
+		gxtkGraphics.prototype.DrawPoly2 = function(verts, surface, srcx, srcy) {
+			if (!surface.image.complete) return;
+			if (mode !== MODE_TEXTURED) {
+				renderPull();
+				mode = MODE_TEXTURED;
+			}
+
+			var vertexCount = verts.length / 4;
+			if (vertexCount < 3 || vertexCount > MAX_VERTICES ) return;
+
+			renderPush(gl.TRIANGLE_FAN, vertexCount);
+			var p = buffer.vpointer;
+
+			for (var i = 0; i < vertexCount; i++) {
+				var index = i*4;
+				var px = verts[index];
+				var py = verts[index+1];
+
+				if (this.tformed) {
+					var ppx = px;
+					px = ppx * this.ix + py * this.jx + this.tx;
+					py = ppx * this.iy + py * this.jy + this.ty;
+				}
+
+				buffer.vdata[p] = px;
+				buffer.vdata[p+1] = py;
+				buffer.vdata[p+2] = (srcx + verts[index+2]) / surface.image.meta_width;
+				buffer.vdata[p+3] = (srcy + verts[index+3]) / surface.image.meta_height;
+				p += 4;
+			}
+
+			render.last.texture = surface.image.texture;
+		}
+
 		gxtkGraphics.prototype.DrawSurface = function(surface, x, y) {
 			if (!surface.image.complete) return;
 			if (mode !== MODE_TEXTURED) {
