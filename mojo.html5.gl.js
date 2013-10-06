@@ -210,6 +210,30 @@ var mojoHtml5Gl = function(undefined){
 			return new gxtkSurface(image, this);
 		}
 
+		BBAsyncImageLoaderThread.prototype.Start = function(){
+			var thread = this;
+			var image = new Image();
+			image.crossOrigin = '';
+
+			image.onload = function(e) {
+				image.meta_width = image.width;
+				image.meta_height = image.height;
+				thread._surface = new gxtkSurface(image, thread._device);
+				bindTexture(this);
+				thread.running = false;
+			}
+
+			image.onerror = function(e) {
+				thread._surface = null;
+				thread.running = false;
+			}
+
+			thread.running = true;
+
+			image.src = BBGame.Game().PathToUrl(thread._path);
+		}
+
+
 		gxtkSurface.prototype.Discard = function(){
 			if (this.image){
 				gl.deleteTexture(this.image.texture);
