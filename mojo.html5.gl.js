@@ -13,6 +13,9 @@ var mojoHtml5Gl = function(undefined){
 		this.textureShader = undefined;
 		this.maxTextureSize = undefined;
 
+		this.hdpi = (typeof(CFG_MOJO_HTML5_GL_HDPI) === "undefined" || CFG_MOJO_HTML5_GL_HDPI === "true" || CFG_MOJO_HTML5_GL_HDPI === "1");
+		this.devicePixelRatio = window.devicePixelRatio || 1;
+
 		canvas.gl2d = this;
 
 		var gl = this.gl = canvas.getContext("webgl", {alpha: false}) || canvas.getContext("experimental-webgl", {alpha: false});
@@ -264,6 +267,14 @@ var mojoHtml5Gl = function(undefined){
 			if (this.game.GetLoading()) return 2;
 
 			if (gl2d.width !== gl2d.canvas.width || gl2d.height !== gl2d.canvas.height) {
+				if (gl2d.hdpi) {
+					gl2d.canvas.style.width = gl2d.canvas.width + "px";
+					gl2d.canvas.style.height = gl2d.canvas.height + "px";
+
+					gl2d.canvas.width = gl2d.canvas.width * gl2d.devicePixelRatio;
+					gl2d.canvas.height = gl2d.canvas.height * gl2d.devicePixelRatio;
+				}
+
 				simpleShader = gl2d.simpleShader = gl2d.loadShaders(false);
 				textureShader = gl2d.textureShader = gl2d.loadShaders(true);
 
@@ -559,6 +570,20 @@ var mojoHtml5Gl = function(undefined){
 			gl.deleteTexture(surface.image.texture);
 			surface.image.texture = null;
 			bindTexture(surface.image);
+		}
+
+		if (gl2d.hdpi) {
+			BBGame.prototype.MouseEventHDPI = BBGame.prototype.MouseEvent;
+
+			BBGame.prototype.MouseEvent = function(ev, data, x, y) {
+				this.MouseEventHDPI(ev, data, x * gl2d.devicePixelRatio, y * gl2d.devicePixelRatio);
+			}
+
+			BBGame.prototype.TouchEventHDPI = BBGame.prototype.TouchEvent;
+
+			BBGame.prototype.TouchEvent = function(ev, data, x, y) {
+				this.TouchEventHDPI(ev, data, x * gl2d.devicePixelRatio, y * gl2d.devicePixelRatio);
+			}
 		}
 
 		function renderPush(type, count) {
