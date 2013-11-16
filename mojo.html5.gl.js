@@ -49,15 +49,11 @@ var mojoHtml5Gl = function(undefined){
 		this.api = new WebGL2DAPI(this);
 		canvas.getContext = this.api;
 
-		canvas.getContext = (function(api, gl) {
+		canvas.getContext = (function(gl) {
 			return function(context) {
-				if( context === "webgl" || context === "experimental-webgl"){
-					return gl;
-				}
-				
-				return api;
+				return gl;
 			};
-		}(this.api, this.gl));
+		}(this.gl));
 
 		FEATURES.webgl.enabled = true;
 		return this;
