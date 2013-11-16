@@ -855,14 +855,16 @@ var mojoHtml5Gl = function(undefined){
 		}
 	}
 
-	function init(id) {
+	function requestAnimFramePolyfill() {
 		var vendors = ['ms', 'moz', 'webkit', 'o'];
 		for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
 			window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
 			window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame']
 				|| window[vendors[x]+'CancelRequestAnimationFrame'];
 		}
+	}
 
+	function init(id) {
 		if (window.WebGLRenderingContext !== undefined) {
 			var mojoPatch = undefined;
 
@@ -875,6 +877,19 @@ var mojoHtml5Gl = function(undefined){
 			}
 		} else {
 			fallback(id);
+		}
+
+		requestAnimFramePolyfill();
+
+		if (window.requestAnimationFrame !== undefined) {
+			var renderFunc = BBGame.prototype.RenderGame;
+			var drawFunc = undefined;
+
+			BBGame.prototype.RenderGame = function() {
+				window.requestAnimationFrame((drawFunc === undefined) ? drawFunc = renderFunc.bind(this) : drawFunc);
+			}
+
+			FEATURES.requestAnimFrame.enabled = true;
 		}
 
 		displayInfo();
