@@ -811,7 +811,7 @@ var mojoHtml5Gl = function(undefined){
 		}
 	}
 
-	function fallback(id) {
+	function enableOffscreenRender(id) {
 		//fallback optimizations
 
 		var offscreen = document.getElementById(id);
@@ -846,6 +846,17 @@ var mojoHtml5Gl = function(undefined){
 		FEATURES.offscreen.enabled = true;
 	}
 
+	function enableRequestAnimFrame() {
+		var renderFunc = BBGame.prototype.RenderGame;
+		var drawFunc = undefined;
+
+		BBGame.prototype.RenderGame = function() {
+			window.requestAnimationFrame((drawFunc === undefined) ? drawFunc = renderFunc.bind(this) : drawFunc);
+		}
+
+		FEATURES.requestAnimFrame.enabled = true;
+	}
+
 	function displayInfo() {
 		console.info('Mojo HTML5 GL successfully connected');
 		console.info('-- Version: ' + VERSION);
@@ -873,23 +884,16 @@ var mojoHtml5Gl = function(undefined){
 			} catch (e) { }
 
 			if (mojoPatch === undefined || mojoPatch.api === undefined) {
-				fallback(id);
+				enableOffscreenRender(id);
 			}
 		} else {
-			fallback(id);
+			enableOffscreenRender(id);
 		}
 
 		requestAnimFramePolyfill();
 
 		if (window.requestAnimationFrame !== undefined) {
-			var renderFunc = BBGame.prototype.RenderGame;
-			var drawFunc = undefined;
-
-			BBGame.prototype.RenderGame = function() {
-				window.requestAnimationFrame((drawFunc === undefined) ? drawFunc = renderFunc.bind(this) : drawFunc);
-			}
-
-			FEATURES.requestAnimFrame.enabled = true;
+			enableRequestAnimFrame();
 		}
 
 		displayInfo();
