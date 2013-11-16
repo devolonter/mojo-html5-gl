@@ -817,8 +817,8 @@ var mojoHtml5Gl = function(undefined){
 		var offscreen = document.getElementById(id);
 		var display = document.createElement('canvas');
 
-		offscreen.style.display = 'none';
 		offscreen.parentNode.insertBefore(display, offscreen.nextSibling);
+		offscreen.parentNode.removeChild(offscreen);
 
 		display.id = offscreen.id;
 		display.width = offscreen.width;
