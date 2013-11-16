@@ -1,7 +1,7 @@
 var mojoHtml5Gl = function(undefined){
 	'use strict';
 
-	var VERSION = '1.4.0';
+	var VERSION = '1.4.0-develop';
 
 	var FEATURES = {
 		webgl: {
@@ -39,14 +39,13 @@ var mojoHtml5Gl = function(undefined){
 
 		var gl = this.gl = canvas.getContext("webgl", {alpha: false}) || canvas.getContext("experimental-webgl", {alpha: false});
 
-		if (gl === undefined || gl === null) return;
+		if (gl === undefined || gl === null) return this;
 
 		try {
 			this.simpleShader = this.loadShaders(false);
 			this.textureShader = this.loadShaders(true);
-		} catch (e) { throw e; }
+		} catch (e) { throw e }
 
-		FEATURES.webgl.enabled = true;
 		this.api = new WebGL2DAPI(this);
 		canvas.getContext = this.api;
 
@@ -59,6 +58,9 @@ var mojoHtml5Gl = function(undefined){
 				return api;
 			};
 		}(this.api, this.gl));
+
+		FEATURES.webgl.enabled = true;
+		return this;
 	};
 
 	WebGL2D.prototype.getFragmentShaderSource = function getFragmentShaderSource(textured) {
@@ -809,8 +811,43 @@ var mojoHtml5Gl = function(undefined){
 		}
 	}
 
+	function fallback(id) {
+		//fallback optimizations
+
+		var offscreen = document.getElementById(id);
+		var display = document.createElement('canvas');
+
+		offscreen.style.display = 'none';
+		offscreen.parentNode.insertBefore(display, offscreen.nextSibling);
+
+		display.id = offscreen.id;
+		display.width = offscreen.width;
+		display.height = offscreen.height;
+		offscreen.id = '';
+
+		var ctx = display.getContext('2d');
+
+		BBGame.prototype.RenderGame = function(){
+			if( !this._started ) return;
+
+			if( this._debugExs ){
+				try{
+					this._delegate.RenderGame();
+				}catch( ex ){
+					this.Die( ex );
+				}
+			}else{
+				this._delegate.RenderGame();
+			}
+
+			ctx.drawImage(offscreen, 0, 0);
+		}
+
+		FEATURES.offscreen.enabled = true;
+	}
+
 	function displayInfo() {
-		console.info('Mojo HTML5 GL successfully connected ');
+		console.info('Mojo HTML5 GL successfully connected');
 		console.info('-- Version: ' + VERSION);
 
 		for (var prop in FEATURES) {
@@ -820,10 +857,17 @@ var mojoHtml5Gl = function(undefined){
 
 	function init(id) {
 		if (window.WebGLRenderingContext !== undefined) {
+			var mojoPatch = undefined;
+
 			try {
-				new WebGL2D(document.getElementById(id));
+				mojoPatch = new WebGL2D(document.getElementById(id));
 			} catch (e) { }
 
+			if (mojoPatch === undefined || mojoPatch.api === undefined) {
+				fallback(id);
+			}
+		} else {
+			fallback(id);
 		}
 
 		displayInfo();
