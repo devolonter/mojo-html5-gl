@@ -213,7 +213,7 @@ var mojoHtml5Gl = function(undefined){
 			return new gxtkSurface(image, this);
 		}
 
-		BBAsyncImageLoaderThread.prototype.Start = function(){
+		BBAsyncImageLoaderThread.prototype.Start=function() {
 			var thread = this;
 			var image = new Image();
 			image.crossOrigin = '';
@@ -223,19 +223,18 @@ var mojoHtml5Gl = function(undefined){
 				image.meta_height = image.height;
 				thread._surface = new gxtkSurface(image, thread._device);
 				bindTexture(this);
-				thread.running = false;
+				thread._running = false;
 			}
 
 			image.onerror = function(e) {
 				thread._surface = null;
-				thread.running = false;
+				thread._running = false;
 			}
 
-			thread.running = true;
+			thread._running = true;
 
 			image.src = BBGame.Game().PathToUrl(thread._path);
 		}
-
 
 		gxtkSurface.prototype.Discard = function(){
 			if (this.image){
