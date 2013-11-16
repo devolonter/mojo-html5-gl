@@ -826,20 +826,9 @@ var mojoHtml5Gl = function(undefined){
 		offscreen.id = '';
 
 		var ctx = display.getContext('2d');
-
+		BBGame.prototype.RenderGameOffscreen = BBGame.prototype.RenderGame;
 		BBGame.prototype.RenderGame = function(){
-			if( !this._started ) return;
-
-			if( this._debugExs ){
-				try{
-					this._delegate.RenderGame();
-				}catch( ex ){
-					this.Die( ex );
-				}
-			}else{
-				this._delegate.RenderGame();
-			}
-
+			this.RenderGameOffscreen();
 			ctx.drawImage(offscreen, 0, 0);
 		}
 
