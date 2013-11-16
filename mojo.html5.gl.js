@@ -1,6 +1,25 @@
 var mojoHtml5Gl = function(undefined){
 	'use strict';
 
+	var VERSION = '1.4.0';
+
+	var FEATURES = {
+		webgl: {
+			display: 'WebGL',
+			enabled: false
+		},
+
+		offscreen: {
+			display: 'Off-screen render',
+			enabled: false
+		},
+
+		requestAnimFrame: {
+			display: 'RequestAnimFrame',
+			enabled: false
+		}
+	}
+
 	document.addEventListener("DOMContentLoaded", function() { init("GameCanvas"); }, false);
 
 	var WebGL2D = function WebGL2D(canvas) {
@@ -26,7 +45,8 @@ var mojoHtml5Gl = function(undefined){
 			this.simpleShader = this.loadShaders(false);
 			this.textureShader = this.loadShaders(true);
 		} catch (e) { throw e; }
-		
+
+		FEATURES.webgl.enabled = true;
 		this.api = new WebGL2DAPI(this);
 		canvas.getContext = this.api;
 
@@ -142,10 +162,6 @@ var mojoHtml5Gl = function(undefined){
 	};	
 
 	var WebGL2DAPI = function WebGL2DAPI(gl2d) {
-		if (CFG_CONFIG === "debug") {
-			print("WebGL enabled");
-		}
-
 		var gl = gl2d.gl;
 
 		gl2d.width = -1;
@@ -793,6 +809,15 @@ var mojoHtml5Gl = function(undefined){
 		}
 	}
 
+	function displayInfo() {
+		console.info('Mojo HTML5 GL successfully connected ');
+		console.info('-- Version: ' + VERSION);
+
+		for (var prop in FEATURES) {
+			console.info('-- ' + FEATURES[prop].display + ': ' + ((FEATURES[prop].enabled === true) ? 'enabled' : 'disabled'));
+		}
+	}
+
 	function init(id) {
 		if (window.WebGLRenderingContext !== undefined) {
 			try {
@@ -800,6 +825,8 @@ var mojoHtml5Gl = function(undefined){
 			} catch (e) { }
 
 		}
+
+		displayInfo();
 	}
 
 };
