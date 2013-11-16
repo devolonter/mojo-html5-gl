@@ -257,18 +257,11 @@ var mojoHtml5Gl = function(undefined){
 			}
 		}
 
-		gxtkGraphics.prototype.CreateSurface=function( width,height ){
-			var canvas = document.createElement("canvas");
+		gxtkGraphics.prototype.CreateSurfaceFallback = gxtkGraphics.prototype.CreateSurface;
 
-			canvas.width = width;
-			canvas.height = height;
-			canvas.meta_width = width;
-			canvas.meta_height = height;
-			bindTexture(canvas);
-			canvas.complete = true;
-
-			var surface = new gxtkSurface(canvas, this);
-			surface.gc = canvas.getContext("2d");
+		gxtkGraphics.prototype.CreateSurface = function(width, height){
+			var surface = this.CreateSurfaceFallback(width, height);
+			bindTexture(surface.image);
 
 			return surface;
 		}
@@ -808,8 +801,6 @@ var mojoHtml5Gl = function(undefined){
 	}
 
 	function enableOffscreenRender(id) {
-		//fallback optimizations
-
 		var offscreen = document.getElementById(id);
 		var display = document.createElement('canvas');
 
