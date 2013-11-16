@@ -13,7 +13,7 @@ var mojoHtml5Gl = function(undefined){
 		this.textureShader = undefined;
 		this.maxTextureSize = undefined;
 
-		this.hdpi = (typeof(CFG_MOJO_HTML5_GL_HDPI) === "undefined" || CFG_MOJO_HTML5_GL_HDPI === "true" || CFG_MOJO_HTML5_GL_HDPI === "1");
+		this.hdpi = (typeof(CFG_MOJO_HTML5_GL_HDPI) !== "undefined" && (CFG_MOJO_HTML5_GL_HDPI === "true" || CFG_MOJO_HTML5_GL_HDPI === "1"));
 		this.devicePixelRatio = window.devicePixelRatio || 1;
 
 		canvas.gl2d = this;
